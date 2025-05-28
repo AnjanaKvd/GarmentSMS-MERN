@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchMaterialById, clearMaterialError } from '../../redux/slices/materialsSlice';
@@ -9,7 +9,11 @@ const MaterialLedgerPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { currentMaterial, isLoading, error } = useSelector((state) => state.materials);
+  
+  // Add a key-based refresh mechanism
+  const [refreshKey, setRefreshKey] = useState(0);
 
+  // Update the useEffect to include the refreshKey dependency
   useEffect(() => {
     console.log("Material ID from params:", id);
     
@@ -23,7 +27,12 @@ const MaterialLedgerPage = () => {
     return () => {
       dispatch(clearMaterialError());
     };
-  }, [dispatch, id, navigate]);
+  }, [dispatch, id, navigate, refreshKey]);
+  
+  // Add a refresh function
+  const handleRefresh = () => {
+    setRefreshKey(prevKey => prevKey + 1);
+  };
 
   const goBack = () => {
     navigate('/raw-materials');
@@ -48,14 +57,27 @@ const MaterialLedgerPage = () => {
 
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <button
-        type="button"
-        onClick={goBack}
-        className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 mb-6"
-      >
-        <ArrowLeftIcon className="-ml-0.5 mr-2 h-4 w-4" aria-hidden="true" />
-        Back to Raw Materials
-      </button>
+      <div className="flex justify-between items-center mb-6">
+        <button
+          type="button"
+          onClick={goBack}
+          className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        >
+          <ArrowLeftIcon className="-ml-0.5 mr-2 h-4 w-4" aria-hidden="true" />
+          Back to Raw Materials
+        </button>
+        
+        <button
+          type="button"
+          onClick={handleRefresh}
+          className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        >
+          <svg className="h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Refresh
+        </button>
+      </div>
 
       {error && (
         <div className="mt-4 bg-red-50 border-l-4 border-red-400 p-4">
@@ -170,7 +192,7 @@ const MaterialLedgerPage = () => {
                     <thead className="bg-gray-50">
                       <tr>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Date
+                          Date & Time
                         </th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Transaction Type
@@ -181,23 +203,20 @@ const MaterialLedgerPage = () => {
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Remarks
                         </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Balance
-                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {ledgerWithBalance.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
+                          <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
                             No transactions found for this material.
                           </td>
                         </tr>
                       ) : (
                         ledgerWithBalance.map((transaction) => (
-                          <tr key={transaction.id}>
+                          <tr key={transaction.id || transaction._id}>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {new Date(transaction.receivedDate).toLocaleDateString()}
+                              {new Date(transaction.receivedDate).toLocaleString()}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
@@ -209,9 +228,6 @@ const MaterialLedgerPage = () => {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                               {transaction.remarks || '-'}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {transaction.runningBalance} {currentMaterial.unit}
                             </td>
                           </tr>
                         ))

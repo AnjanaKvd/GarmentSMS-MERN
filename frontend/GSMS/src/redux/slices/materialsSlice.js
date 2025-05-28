@@ -107,6 +107,24 @@ export const receiveMaterialStock = createAsyncThunk(
   }
 );
 
+// Delete material
+export const deleteMaterial = createAsyncThunk(
+  'materials/deleteMaterial',
+  async (id, { rejectWithValue }) => {
+    try {
+      if (!id || id === 'undefined') {
+        return rejectWithValue('Invalid material ID');
+      }
+      await api.delete(`/materials/${id}`);
+      return id;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to delete material'
+      );
+    }
+  }
+);
+
 const initialState = {
   materials: [],
   currentMaterial: null,
@@ -176,13 +194,19 @@ const materialsSlice = createSlice({
       })
       .addCase(updateMaterial.fulfilled, (state, action) => {
         state.isLoading = false;
+        // Find and update the material in the list
         const index = state.materials.findIndex(
-          (material) => material.id === action.payload.id
+          (material) => (material.id || material._id) === (action.payload.id || action.payload._id)
         );
         if (index !== -1) {
           state.materials[index] = action.payload;
         }
-        state.currentMaterial = action.payload;
+        // Also update the currentMaterial if it's the same one
+        if (state.currentMaterial && 
+           (state.currentMaterial.id === (action.payload.id || action.payload._id) || 
+            state.currentMaterial._id === (action.payload.id || action.payload._id))) {
+          state.currentMaterial = action.payload;
+        }
       })
       .addCase(updateMaterial.rejected, (state, action) => {
         state.isLoading = false;
@@ -196,15 +220,38 @@ const materialsSlice = createSlice({
       })
       .addCase(receiveMaterialStock.fulfilled, (state, action) => {
         state.isLoading = false;
+        // Find and update the material in the list
         const index = state.materials.findIndex(
-          (material) => material.id === action.payload.id
+          (material) => (material.id || material._id) === (action.payload.id || action.payload._id)
         );
         if (index !== -1) {
           state.materials[index] = action.payload;
         }
-        state.currentMaterial = action.payload;
+        // Also update the currentMaterial if it's the same one
+        if (state.currentMaterial && 
+           (state.currentMaterial.id === (action.payload.id || action.payload._id) || 
+            state.currentMaterial._id === (action.payload.id || action.payload._id))) {
+          state.currentMaterial = action.payload;
+        }
       })
       .addCase(receiveMaterialStock.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      
+      // Delete material
+      .addCase(deleteMaterial.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(deleteMaterial.fulfilled, (state, action) => {
+        state.isLoading = false;
+        // Filter out the deleted material from the array
+        state.materials = state.materials.filter(
+          (material) => (material.id || material._id) !== action.payload
+        );
+      })
+      .addCase(deleteMaterial.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       });

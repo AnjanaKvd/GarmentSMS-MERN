@@ -1,15 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { fetchMaterials, clearMaterialError } from '../../redux/slices/materialsSlice';
 import MaterialFormModal from '../../components/raw-materials/MaterialFormModal';
 import ReceiveStockModal from '../../components/raw-materials/ReceiveStockModal';
+import DeleteConfirmationModal from '../../components/raw-materials/DeleteConfirmationModal';
 
 // Icons from Heroicons
 import { 
   PlusIcon, 
   ArrowDownOnSquareIcon, 
-  PencilIcon, 
+  PencilIcon,
+  TrashIcon,
   MagnifyingGlassIcon 
 } from '@heroicons/react/24/outline';
 
@@ -22,9 +24,12 @@ const RawMaterialsPage = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showReceiveModal, setShowReceiveModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState(null);
   
   const canEdit = ['ADMIN', 'MANAGER'].includes(user?.role);
+
+  const [filteredMaterials, setFilteredMaterials] = useState([]);
 
   useEffect(() => {
     dispatch(fetchMaterials());
@@ -35,16 +40,21 @@ const RawMaterialsPage = () => {
     };
   }, [dispatch]);
 
+  useEffect(() => {
+    // Re-filter whenever materials change
+    setFilteredMaterials(
+      materials.filter((material) => {
+        return (
+          material.itemCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          material.name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      })
+    );
+  }, [materials, searchTerm]);
+
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
   };
-
-  const filteredMaterials = materials.filter((material) => {
-    return (
-      material.itemCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      material.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  });
 
   const handleEditClick = (material) => {
     if (!material || (!material.id && !material._id)) {
@@ -62,6 +72,31 @@ const RawMaterialsPage = () => {
     }
     setSelectedMaterial(material);
     setShowReceiveModal(true);
+  };
+
+  const handleDeleteClick = (material) => {
+    if (!material || (!material.id && !material._id)) {
+      console.error("Invalid material for deletion", material);
+      return;
+    }
+    setSelectedMaterial(material);
+    setShowDeleteModal(true);
+  };
+
+  // Create a function to refresh materials
+  const refreshMaterials = useCallback(() => {
+    dispatch(fetchMaterials());
+  }, [dispatch]);
+  
+  // Update the handlers to refresh data after operations
+  const handleModalClose = () => {
+    setShowAddModal(false);
+    setShowEditModal(false);
+    setShowReceiveModal(false);
+    setShowDeleteModal(false);
+    setSelectedMaterial(null);
+    // Refresh materials list
+    refreshMaterials();
   };
 
   return (
@@ -218,9 +253,15 @@ const RawMaterialsPage = () => {
                               </button>
                               <button
                                 onClick={() => handleEditClick(material)}
-                                className="text-blue-600 hover:text-blue-900"
+                                className="text-blue-600 hover:text-blue-900 mr-3"
                               >
                                 <PencilIcon className="h-5 w-5 inline" /> Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteClick(material)}
+                                className="text-red-600 hover:text-red-900"
+                              >
+                                <TrashIcon className="h-5 w-5 inline" /> Delete
                               </button>
                             </>
                           )}
@@ -238,7 +279,7 @@ const RawMaterialsPage = () => {
       {/* Add Material Modal */}
       {showAddModal && (
         <MaterialFormModal 
-          onClose={() => setShowAddModal(false)} 
+          onClose={handleModalClose} 
           isEdit={false}
         />
       )}
@@ -246,7 +287,7 @@ const RawMaterialsPage = () => {
       {/* Edit Material Modal */}
       {showEditModal && selectedMaterial && (
         <MaterialFormModal 
-          onClose={() => setShowEditModal(false)} 
+          onClose={handleModalClose} 
           isEdit={true}
           material={selectedMaterial}
         />
@@ -255,7 +296,15 @@ const RawMaterialsPage = () => {
       {/* Receive Stock Modal */}
       {showReceiveModal && selectedMaterial && (
         <ReceiveStockModal 
-          onClose={() => setShowReceiveModal(false)} 
+          onClose={handleModalClose} 
+          material={selectedMaterial}
+        />
+      )}
+
+      {/* Delete Material Modal */}
+      {showDeleteModal && selectedMaterial && (
+        <DeleteConfirmationModal 
+          onClose={handleModalClose} 
           material={selectedMaterial}
         />
       )}

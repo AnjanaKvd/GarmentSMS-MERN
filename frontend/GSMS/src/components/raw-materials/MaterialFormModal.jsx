@@ -4,11 +4,13 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useForm } from 'react-hook-form';
 import { createMaterial, updateMaterial } from '../../redux/slices/materialsSlice';
 import { XMarkIcon } from '@heroicons/react/24/outline';
+import { useNotification } from '../common/Notification';
 
 const MaterialFormModal = ({ onClose, isEdit = false, material = null }) => {
   const dispatch = useDispatch();
+  const { showNotification } = useNotification();
   const { isLoading } = useSelector((state) => state.materials);
-  
+ 
   const { register, handleSubmit, reset, formState: { errors } } = useForm({
     defaultValues: isEdit && material ? {
       itemCode: material.itemCode,
@@ -47,13 +49,25 @@ const MaterialFormModal = ({ onClose, isEdit = false, material = null }) => {
         // Use _id if id is not available (API compatibility)
         const materialId = material.id || material._id;
         await dispatch(updateMaterial({ id: materialId, materialData: data })).unwrap();
+        onClose();
+        showNotification(
+          `Material ${data.name} (${data.itemCode}) updated successfully`,
+          'success'
+        );
       } else {
-        await dispatch(createMaterial(data)).unwrap();
+        const result = await dispatch(createMaterial(data)).unwrap();
+        onClose();
+        showNotification(
+          `Material ${data.name} (${data.itemCode}) created successfully`,
+          'success'
+        );
       }
-      onClose();
     } catch (error) {
-      // Error is handled in the slice
-      console.error('Failed to save material:', error);
+      showNotification(
+        `Failed to ${isEdit ? 'update' : 'create'} material: ${error.message || 'Unknown error'}`,
+        'error'
+      );
+      console.error(`Failed to ${isEdit ? 'update' : 'create'} material:`, error);
     }
   };
 

@@ -1,11 +1,15 @@
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { receiveMaterialStock } from '../../redux/slices/materialsSlice';
 import { XMarkIcon } from '@heroicons/react/24/outline';
+import { useNotification } from '../common/Notification';
 
 const ReceiveStockModal = ({ onClose, material }) => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { showNotification } = useNotification();
   const { isLoading } = useSelector((state) => state.materials);
   
   const { register, handleSubmit, formState: { errors } } = useForm({
@@ -29,9 +33,25 @@ const ReceiveStockModal = ({ onClose, material }) => {
       // Use _id if id is not available (API compatibility)
       const materialId = material.id || material._id;
       await dispatch(receiveMaterialStock({ id: materialId, stockData: data })).unwrap();
+      
+      // Close the modal
       onClose();
+      
+      // Show notification with link to ledger
+      showNotification(
+        `Stock received successfully for ${material.name}`,
+        'success',
+        5000,
+        {
+          text: 'View Ledger',
+          onClick: () => navigate(`/raw-materials/${materialId}/ledger`)
+        }
+      );
     } catch (error) {
-      // Error is handled in the slice
+      showNotification(
+        `Failed to receive stock: ${error.message || 'Unknown error'}`,
+        'error'
+      );
       console.error('Failed to receive stock:', error);
     }
   };
