@@ -11,7 +11,7 @@ const ProtectedRoute = ({ allowedRoles }) => {
   }
   
   // If allowedRoles is provided, check if user has the required role
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
+  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
     // Redirect to dashboard with unauthorized message
     return <Navigate to="/dashboard?unauthorized=true" replace />;
   }

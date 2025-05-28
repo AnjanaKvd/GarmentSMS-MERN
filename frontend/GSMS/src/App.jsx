@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import Routes from './routes';
+import ErrorBoundary from './components/ErrorBoundary';
 import { getCurrentUser } from './redux/slices/authSlice';
 import { NotificationProvider } from './components/common/Notification';
 
@@ -13,9 +14,11 @@ function App() {
   }, [dispatch]);
 
   return (
-    <NotificationProvider>
-      <Routes />
-    </NotificationProvider>
+    <ErrorBoundary>
+      <NotificationProvider>
+        <Routes />
+      </NotificationProvider>
+    </ErrorBoundary>
   );
 }
 
