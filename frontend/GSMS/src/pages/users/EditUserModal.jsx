@@ -1,14 +1,21 @@
-import { Fragment } from 'react';
+import { Fragment, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useForm } from 'react-hook-form';
 
-const AddUserModal = ({ isOpen, onClose, onSubmit }) => {
-  const { register, handleSubmit, formState: { errors }, reset, watch } = useForm();
-  const password = watch('password');
+const EditUserModal = ({ isOpen, onClose, onSubmit, user }) => {
+  const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm();
+
+  useEffect(() => {
+    if (user) {
+      setValue('username', user.username);
+      setValue('role', user.role);
+      setValue('status', user.status);
+    }
+  }, [user, setValue]);
 
   const handleFormSubmit = async (data) => {
-    await onSubmit(data);
+    await onSubmit(user._id, data);
     reset();
     onClose();
   };
@@ -54,7 +61,7 @@ const AddUserModal = ({ isOpen, onClose, onSubmit }) => {
                 <div className="sm:flex sm:items-start">
                   <div className="mt-3 text-center sm:mt-0 sm:text-left w-full">
                     <Dialog.Title as="h3" className="text-xl font-semibold leading-6 text-gray-900 mb-6">
-                      Add New User
+                      Edit User
                     </Dialog.Title>
                     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
                       <div>
@@ -81,59 +88,6 @@ const AddUserModal = ({ isOpen, onClose, onSubmit }) => {
                           />
                           {errors.username && (
                             <p className="mt-2 text-sm text-red-600">{errors.username.message}</p>
-                          )}
-                        </div>
-                      </div>
-
-                      <div>
-                        <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                          Password
-                        </label>
-                        <div className="mt-1">
-                          <input
-                            type="password"
-                            id="password"
-                            {...register('password', {
-                              required: 'Password is required',
-                              minLength: {
-                                value: 6,
-                                message: 'Password must be at least 6 characters'
-                              }
-                            })}
-                            className={`block w-full rounded-md border-0 py-1.5 px-3 text-gray-900 shadow-sm ring-1 ring-inset ${
-                              errors.password
-                                ? 'ring-red-300 focus:ring-red-500'
-                                : 'ring-gray-300 focus:ring-indigo-500'
-                            } placeholder:text-gray-400 focus:ring-2 focus:ring-inset sm:text-sm sm:leading-6`}
-                            placeholder="Enter password"
-                          />
-                          {errors.password && (
-                            <p className="mt-2 text-sm text-red-600">{errors.password.message}</p>
-                          )}
-                        </div>
-                      </div>
-
-                      <div>
-                        <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                          Confirm Password
-                        </label>
-                        <div className="mt-1">
-                          <input
-                            type="password"
-                            id="confirmPassword"
-                            {...register('confirmPassword', {
-                              required: 'Please confirm your password',
-                              validate: value => value === password || 'Passwords do not match'
-                            })}
-                            className={`block w-full rounded-md border-0 py-1.5 px-3 text-gray-900 shadow-sm ring-1 ring-inset ${
-                              errors.confirmPassword
-                                ? 'ring-red-300 focus:ring-red-500'
-                                : 'ring-gray-300 focus:ring-indigo-500'
-                            } placeholder:text-gray-400 focus:ring-2 focus:ring-inset sm:text-sm sm:leading-6`}
-                            placeholder="Confirm password"
-                          />
-                          {errors.confirmPassword && (
-                            <p className="mt-2 text-sm text-red-600">{errors.confirmPassword.message}</p>
                           )}
                         </div>
                       </div>
@@ -166,6 +120,31 @@ const AddUserModal = ({ isOpen, onClose, onSubmit }) => {
                         </div>
                       </div>
 
+                      <div>
+                        <label htmlFor="status" className="block text-sm font-medium text-gray-700">
+                          Status
+                        </label>
+                        <div className="mt-1">
+                          <select
+                            id="status"
+                            {...register('status', {
+                              required: 'Status is required'
+                            })}
+                            className={`block w-full rounded-md border-0 py-1.5 px-3 text-gray-900 shadow-sm ring-1 ring-inset ${
+                              errors.status
+                                ? 'ring-red-300 focus:ring-red-500'
+                                : 'ring-gray-300 focus:ring-indigo-500'
+                            } focus:ring-2 focus:ring-inset sm:text-sm sm:leading-6`}
+                          >
+                            <option value="ACTIVE">Active</option>
+                            <option value="INACTIVE">Inactive</option>
+                          </select>
+                          {errors.status && (
+                            <p className="mt-2 text-sm text-red-600">{errors.status.message}</p>
+                          )}
+                        </div>
+                      </div>
+
                       <div className="mt-6 sm:mt-8 flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-3">
                         <button
                           type="button"
@@ -178,7 +157,7 @@ const AddUserModal = ({ isOpen, onClose, onSubmit }) => {
                           type="submit"
                           className="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 sm:w-auto"
                         >
-                          Add User
+                          Save Changes
                         </button>
                       </div>
                     </form>
@@ -193,4 +172,4 @@ const AddUserModal = ({ isOpen, onClose, onSubmit }) => {
   );
 };
 
-export default AddUserModal; 
+export default EditUserModal; 
