@@ -8,6 +8,7 @@ import DashboardLayout from '../layouts/DashboardLayout';
 // Pages
 import LoginPage from '../pages/auth/LoginPage';
 import DashboardPage from '../pages/dashboard/DashboardPage';
+import UserManagementPage from '../pages/users/UserManagementPage';
 
 // Protected route
 import ProtectedRoute from './ProtectedRoute';
@@ -31,7 +32,6 @@ const ProductsPage = () => <div>Products Page</div>;
 const OrdersPage = () => <div>Orders Page</div>;
 const ProductionPage = () => <div>Production Page</div>;
 const ReportsPage = () => <div>Reports Page</div>;
-const UsersPage = () => <div>Users Management Page</div>;
 
 // Roles
 const ROLES = {
@@ -141,7 +141,7 @@ const Routes = () => {
           children: [
             {
               index: true,
-              element: <UsersPage />,
+              element: <UserManagementPage />,
             },
           ],
         },
