@@ -24,6 +24,10 @@ const rawMaterialSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  description: {
+    type: String,
+    default: ''
+  },
   unit: {
     type: String,
     required: true,
