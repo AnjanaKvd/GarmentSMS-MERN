@@ -10,7 +10,8 @@ import LoginPage from '../pages/auth/LoginPage';
 import DashboardPage from '../pages/dashboard/DashboardPage';
 import MaterialLedgerPage from '../pages/raw-materials/MaterialLedgerPage';
 import RawMaterialsPage from '../pages/raw-materials/RawMaterialsPage';
-
+import ProductsPage from '../pages/products/ProductsPage';
+import ProductBOMPage from '../pages/products/ProductBOMPage';
 
 // Protected route
 import ProtectedRoute from './ProtectedRoute';
@@ -29,7 +30,6 @@ const NotFound = () => (
 );
 
 // Placeholder components for future implementation
-const ProductsPage = () => <div>Products Page</div>;
 const OrdersPage = () => <div>Orders Page</div>;
 const ProductionPage = () => <div>Production Page</div>;
 const ReportsPage = () => <div>Reports Page</div>;
@@ -102,6 +102,10 @@ const Routes = () => {
             {
               index: true,
               element: <ProductsPage />,
+            },
+            {
+              path: ':id/bom',
+              element: <ProductBOMPage />,
             },
           ],
         },

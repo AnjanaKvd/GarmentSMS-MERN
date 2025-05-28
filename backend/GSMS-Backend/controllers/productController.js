@@ -1,5 +1,6 @@
 const Product = require('../models/Product');
 const RawMaterial = require('../models/RawMaterial');
+const Order = require('../models/Order');
 
 // Get all products
 exports.getAllProducts = async (req, res) => {
@@ -140,4 +141,34 @@ exports.updateProduct = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
-}; 
+};
+
+// Delete product
+exports.deleteProduct = async (req, res) => {
+  try {
+    const productId = req.params.id;
+    
+    // Check if product exists
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+    
+    // Check if product is being used in any orders
+    const ordersUsingProduct = await Order.find({ productId });
+    
+    if (ordersUsingProduct.length > 0) {
+      return res.status(400).json({ 
+        message: 'Cannot delete product as it is being used in orders',
+        orders: ordersUsingProduct.map(o => ({ id: o._id, poNo: o.poNo }))
+      });
+    }
+    
+    // Delete the product if not in use
+    await Product.findByIdAndDelete(productId);
+    
+    res.status(200).json({ message: 'Product deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
