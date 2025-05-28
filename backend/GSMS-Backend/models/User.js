@@ -16,6 +16,11 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ["ADMIN", "MANAGER", "PRODUCTION", "VIEWER"],
     default: "VIEWER"
+  },
+  status: {
+    type: String,
+    enum: ["ACTIVE", "INACTIVE", "DELETED"],
+    default: "ACTIVE"
   }
 }, { timestamps: true });
 
