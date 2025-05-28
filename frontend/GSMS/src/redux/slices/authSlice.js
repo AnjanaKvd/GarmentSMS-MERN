@@ -1,6 +1,7 @@
 // src/redux/slices/authSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
+import {jwtDecode} from 'jwt-decode';
 
 // Async thunk for login
 export const login = createAsyncThunk(
@@ -26,6 +27,47 @@ export const logout = createAsyncThunk('auth/logout', async () => {
   localStorage.removeItem('token');
   return null;
 });
+
+// New thunk to get current user info from token
+export const getCurrentUser = createAsyncThunk(
+  'auth/getCurrentUser',
+  async (_, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        return rejectWithValue('No token found');
+      }
+      
+      // Option 1: Decode the token to get user info
+      const decoded = jwtDecode(token);
+      
+      // Check if token is expired
+      const currentTime = Date.now() / 1000;
+      if (decoded.exp && decoded.exp < currentTime) {
+        localStorage.removeItem('token');
+        return rejectWithValue('Token expired');
+      }
+      
+      // If you need to verify the token with the backend
+      // Uncomment this and use instead of the decoded user
+      // const response = await api.get('/auth/me');
+      // return { user: response.data, token };
+      
+      return { 
+        user: {
+          id: decoded.id || decoded.userId || decoded.sub,
+          username: decoded.username,
+          role: decoded.role
+        }, 
+        token 
+      };
+    } catch (error) {
+      localStorage.removeItem('token');
+      return rejectWithValue('Invalid token');
+    }
+  }
+);
 
 // Check if user is already logged in from localStorage
 const token = localStorage.getItem('token');
@@ -68,6 +110,22 @@ const authSlice = createSlice({
         state.user = null;
         state.token = null;
         state.isAuthenticated = false;
+      })
+      // Get current user cases
+      .addCase(getCurrentUser.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(getCurrentUser.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isAuthenticated = true;
+        state.user = action.payload.user;
+        state.token = action.payload.token;
+      })
+      .addCase(getCurrentUser.rejected, (state) => {
+        state.isLoading = false;
+        state.isAuthenticated = false;
+        state.user = null;
+        state.token = null;
       });
   },
 });

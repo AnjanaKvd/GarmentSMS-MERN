@@ -33,4 +33,11 @@ router.put(
   rawMaterialController.updateMaterial
 );
 
+// Delete material (Admin and Manager only)
+router.delete(
+  '/:id',
+  checkRole(['ADMIN', 'MANAGER']),
+  rawMaterialController.deleteMaterial
+);
+
 module.exports = router; 
