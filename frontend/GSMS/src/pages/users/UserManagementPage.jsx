@@ -1,33 +1,46 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MagnifyingGlassIcon, PlusIcon, PencilIcon, TrashIcon, EyeIcon } from '@heroicons/react/24/outline';
 import AddUserModal from './AddUserModal';
+import api from '../../services/api';
+import { useSelector } from 'react-redux';
 
 const UserManagementPage = () => {
-  // Mock data for demonstration
-  const [users, setUsers] = useState([
-    { id: 1, username: 'john.doe', email: 'john.doe@example.com', role: 'Admin', status: 'Active', lastLogin: '2024-03-15' },
-    { id: 2, username: 'jane.smith', email: 'jane.smith@example.com', role: 'Manager', status: 'Active', lastLogin: '2024-03-14' },
-    { id: 3, username: 'bob.wilson', email: 'bob.wilson@example.com', role: 'User', status: 'Inactive', lastLogin: '2024-03-10' },
-  ]);
-
+  const { user } = useSelector((state) => state.auth);
+  const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await api.get('/user/users');
+        setUsers(response.data);
+        setError(null);
+      } catch (error) {
+        console.error('Error fetching users:', error);
+        setError(error.response?.data?.message || 'Failed to fetch users');
+        setUsers([]);
+      }
+    };
+    fetchUsers();
+  }, []);
 
   const filteredUsers = users.filter(user =>
     user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.role.toLowerCase().includes(searchTerm.toLowerCase())
+    user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.role?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleAddUser = async (userData) => {
-    // In a real application, this would be an API call
-    const newUser = {
-      id: users.length + 1,
-      ...userData,
-      status: 'Active',
-      lastLogin: new Date().toISOString().split('T')[0]
-    };
-    setUsers([...users, newUser]);
+    try {
+      const response = await api.post('/user/users', userData);
+      setUsers([...users, response.data]);
+      setIsAddUserModalOpen(false);
+      setError(null);
+    } catch (error) {
+      setError(error.response?.data?.message || 'Failed to add user');
+    }
   };
 
   return (
@@ -79,9 +92,6 @@ const UserManagementPage = () => {
                       Username
                     </th>
                     <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                      Email
-                    </th>
-                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                       Role
                     </th>
                     <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
@@ -90,8 +100,8 @@ const UserManagementPage = () => {
                     <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                       Last Login
                     </th>
-                    <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                      <span className="sr-only">Actions</span>
+                    <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6 text-sm font-semibold">
+                      Actions
                     </th>
                   </tr>
                 </thead>
@@ -101,9 +111,7 @@ const UserManagementPage = () => {
                       <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
                         {user.username}
                       </td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                        {user.email}
-                      </td>
+                      
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                         {user.role}
                       </td>
@@ -121,13 +129,7 @@ const UserManagementPage = () => {
                       </td>
                       <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                         <div className="flex justify-end space-x-2">
-                          <button
-                            type="button"
-                            className="text-indigo-600 hover:text-indigo-900"
-                          >
-                            <EyeIcon className="h-5 w-5" aria-hidden="true" />
-                            <span className="sr-only">View</span>
-                          </button>
+                          
                           <button
                             type="button"
                             className="text-indigo-600 hover:text-indigo-900"
