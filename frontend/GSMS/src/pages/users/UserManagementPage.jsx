@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { MagnifyingGlassIcon, PlusIcon, PencilIcon, TrashIcon, EyeIcon } from '@heroicons/react/24/outline';
+import AddUserModal from './AddUserModal';
 
 const UserManagementPage = () => {
   // Mock data for demonstration
@@ -10,12 +11,24 @@ const UserManagementPage = () => {
   ]);
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
 
   const filteredUsers = users.filter(user =>
     user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.role.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleAddUser = async (userData) => {
+    // In a real application, this would be an API call
+    const newUser = {
+      id: users.length + 1,
+      ...userData,
+      status: 'Active',
+      lastLogin: new Date().toISOString().split('T')[0]
+    };
+    setUsers([...users, newUser]);
+  };
 
   return (
     <div className="px-4 sm:px-6 lg:px-8">
@@ -29,6 +42,7 @@ const UserManagementPage = () => {
         <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
           <button
             type="button"
+            onClick={() => setIsAddUserModalOpen(true)}
             className="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:w-auto"
           >
             <PlusIcon className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
@@ -138,6 +152,13 @@ const UserManagementPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Add User Modal */}
+      <AddUserModal
+        isOpen={isAddUserModalOpen}
+        onClose={() => setIsAddUserModalOpen(false)}
+        onSubmit={handleAddUser}
+      />
     </div>
   );
 };
