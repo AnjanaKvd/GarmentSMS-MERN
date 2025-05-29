@@ -13,6 +13,7 @@ import RawMaterialsPage from '../pages/raw-materials/RawMaterialsPage';
 import ProductsPage from '../pages/products/ProductsPage';
 import ProductBOMPage from '../pages/products/ProductBOMPage';
 import UserManagementPage from '../pages/users/UserManagementPage';
+import Orders from '../pages/orders/Orders';
 
 // Protected route
 import ProtectedRoute from './ProtectedRoute';
@@ -31,7 +32,6 @@ const NotFound = () => (
 );
 
 // Placeholder components for future implementation
-const OrdersPage = () => <div>Orders Page</div>;
 const ProductionPage = () => <div>Production Page</div>;
 const ReportsPage = () => <div>Reports Page</div>;
 
@@ -115,7 +115,7 @@ const Routes = () => {
           children: [
             {
               index: true,
-              element: <OrdersPage />,
+              element: <Orders />,
             },
           ],
         },
