@@ -46,10 +46,32 @@ const Orders = () => {
 
   const handleStatusChange = async (orderId, newStatus) => {
     try {
+      // Find the current order
+      const currentOrder = orders.find(order => order._id === orderId);
+      
+      // Validate status transition
+      if (currentOrder.status === 'PENDING' && newStatus === 'COMPLETED') {
+        setError('Cannot change status from PENDING to COMPLETED directly. Must go through PRODUCING first.');
+        return;
+      }
+
       await api.patch(`/orders/${orderId}/status`, { status: newStatus });
       await fetchOrders();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to update order status');
+    }
+  };
+
+  const getAvailableStatuses = (currentStatus) => {
+    switch (currentStatus) {
+      case 'PENDING':
+        return ['PENDING', 'PRODUCING'];
+      case 'PRODUCING':
+        return ['PRODUCING', 'COMPLETED'];
+      case 'COMPLETED':
+        return ['COMPLETED'];
+      default:
+        return [currentStatus];
     }
   };
 
@@ -155,13 +177,15 @@ const Orders = () => {
                           onChange={(e) => handleStatusChange(order._id, e.target.value)}
                           className={`rounded-full text-xs font-medium px-2.5 py-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
                             ${order.status.toLowerCase() === 'pending' ? 'bg-yellow-100 text-yellow-800' : ''}
+                            ${order.status.toLowerCase() === 'producing' ? 'bg-blue-100 text-blue-800' : ''}
                             ${order.status.toLowerCase() === 'completed' ? 'bg-green-100 text-green-800' : ''}
-                            ${order.status.toLowerCase() === 'cancelled' ? 'bg-red-100 text-red-800' : ''}
                           `}
                         >
-                          <option value="PENDING">Pending</option>
-                          <option value="PRODUCING">Producing</option>
-                          <option value="COMPLETED">Completed</option>
+                          {getAvailableStatuses(order.status).map(status => (
+                            <option key={status} value={status}>
+                              {status.charAt(0) + status.slice(1).toLowerCase()}
+                            </option>
+                          ))}
                         </select>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -197,6 +221,7 @@ const Orders = () => {
                                       <th className="px-2 py-1 text-xs font-semibold text-gray-600">Item Code</th>
                                       <th className="px-2 py-1 text-xs font-semibold text-gray-600">Required Qty</th>
                                       <th className="px-2 py-1 text-xs font-semibold text-gray-600">Used Qty</th>
+                                      <th className="px-2 py-1 text-xs font-semibold text-gray-600">Current Stock</th>
                                       <th className="px-2 py-1 text-xs font-semibold text-gray-600">Wastage</th>
                                       <th className="px-2 py-1 text-xs font-semibold text-gray-600">Waste %</th>
                                       <th className="px-2 py-1 text-xs font-semibold text-gray-600">Unit</th>
@@ -209,6 +234,17 @@ const Orders = () => {
                                         <td className="px-2 py-1 text-xs text-gray-700">{material.itemCode}</td>
                                         <td className="px-2 py-1 text-xs text-gray-700">{material.requiredQty}</td>
                                         <td className="px-2 py-1 text-xs text-gray-700">{material.actualUsedQty}</td>
+                                        <td
+                                          className={`px-2 py-1 text-xs ${
+                                            material.currentStock < material.requiredQty
+                                            ? 'text-red-600 font-bold'
+                                            : (material.actualUsedQty / material.currentStock) * 100 > 80
+                                            ? 'text-yellow-600 font-bold'
+                                            : 'text-green-600 font-bold'
+                                          }`}
+                                        >
+                                          {material.currentStock} ({material.currentStock - material.requiredQty})
+                                        </td>
                                         <td className="px-2 py-1 text-xs text-gray-700">{material.wastage}</td>
                                         <td className="px-2 py-1 text-xs text-gray-700">{material.wastePercentage}</td>
                                         <td className="px-2 py-1 text-xs text-gray-700">{material.unit}</td>

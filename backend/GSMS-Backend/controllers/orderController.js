@@ -123,6 +123,7 @@ exports.getOrderUsage = async (req, res) => {
       requiredQty: item.requiredQty,
       actualUsedQty: item.actualUsedQty,
       wastage: item.wastage,
+      currentStock: item.materialId.currentStock,
       wastePercentage: item.actualUsedQty > 0 
         ? ((item.wastage / item.actualUsedQty) * 100).toFixed(2) + '%' 
         : '0%'
