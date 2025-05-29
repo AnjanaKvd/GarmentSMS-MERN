@@ -245,7 +245,9 @@ const Orders = () => {
                                       <th className="px-2 py-1 text-xs font-semibold text-gray-600">Item Code</th>
                                       <th className="px-2 py-1 text-xs font-semibold text-gray-600">Required Qty</th>
                                       <th className="px-2 py-1 text-xs font-semibold text-gray-600">Used Qty</th>
-                                      <th className="px-2 py-1 text-xs font-semibold text-gray-600">Current Stock</th>
+                                      {order.status === 'PENDING' && (
+                                        <th className="px-2 py-1 text-xs font-semibold text-gray-600">Current Stock</th>
+                                      )}
                                       <th className="px-2 py-1 text-xs font-semibold text-gray-600">Wastage</th>
                                       <th className="px-2 py-1 text-xs font-semibold text-gray-600">Waste %</th>
                                     </tr>
@@ -257,17 +259,19 @@ const Orders = () => {
                                         <td className="px-2 py-1 text-xs text-gray-700">{material.itemCode}</td>
                                         <td className="px-2 py-1 text-xs text-gray-700">{material.requiredQty} {material.unit}</td>
                                         <td className="px-2 py-1 text-xs text-gray-700">{material.actualUsedQty}</td>
-                                        <td
-                                          className={`px-2 py-1 text-xs ${
-                                            material.currentStock < material.requiredQty
-                                            ? 'text-red-600 font-bold'
-                                            : (material.actualUsedQty / material.currentStock) * 100 > 80
-                                            ? 'text-yellow-600 font-bold'
-                                            : 'text-green-600 font-bold'
-                                          }`}
-                                        >
-                                          {material.currentStock} ({material.currentStock - material.requiredQty})
-                                        </td>
+                                        {order.status === 'PENDING' && (
+                                          <td
+                                            className={`px-2 py-1 text-xs ${
+                                              material.currentStock < material.requiredQty
+                                              ? 'text-red-600 font-bold'
+                                              : (material.actualUsedQty / material.currentStock) * 100 > 80
+                                              ? 'text-yellow-600 font-bold'
+                                              : 'text-green-600 font-bold'
+                                            }`}
+                                          >
+                                            {material.currentStock} ({material.currentStock - material.requiredQty})
+                                          </td>
+                                        )}
                                         <td className="px-2 py-1 text-xs text-gray-700">{material.wastage}</td>
                                         <td className="px-2 py-1 text-xs text-gray-700">{material.wastePercentage}</td>
                                       </tr>
