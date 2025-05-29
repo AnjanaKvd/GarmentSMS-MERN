@@ -89,9 +89,38 @@ exports.updateOrderStatus = async (req, res) => {
       return res.status(400).json({ message: 'Valid status is required' });
     }
     
-    const order = await Order.findById(req.params.id);
+    const order = await Order.findById(req.params.id)
+      .populate('consumptionReport.materialId');
+      
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // If changing to PRODUCING status, check and reduce stock
+    if (status === 'PRODUCING') {
+      // Check if any material has insufficient stock
+      const insufficientMaterials = order.consumptionReport.filter(item => 
+        item.materialId.currentStock < item.requiredQty
+      );
+
+      if (insufficientMaterials.length > 0) {
+        return res.status(400).json({ 
+          message: 'Insufficient stock for some materials',
+          insufficientMaterials: insufficientMaterials.map(item => ({
+            materialName: item.materialId.name,
+            requiredQty: item.requiredQty,
+            currentStock: item.materialId.currentStock
+          }))
+        });
+      }
+
+      // Reduce stock for all materials
+      for (const item of order.consumptionReport) {
+        await RawMaterial.findByIdAndUpdate(
+          item.materialId._id,
+          { $inc: { currentStock: -item.requiredQty } }
+        );
+      }
     }
     
     order.status = status;
@@ -123,6 +152,7 @@ exports.getOrderUsage = async (req, res) => {
       requiredQty: item.requiredQty,
       actualUsedQty: item.actualUsedQty,
       wastage: item.wastage,
+      currentStock: item.materialId.currentStock,
       wastePercentage: item.actualUsedQty > 0 
         ? ((item.wastage / item.actualUsedQty) * 100).toFixed(2) + '%' 
         : '0%'
