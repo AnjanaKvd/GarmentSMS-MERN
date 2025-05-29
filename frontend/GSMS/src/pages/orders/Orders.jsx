@@ -10,6 +10,7 @@ const Orders = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedOrderId, setExpandedOrderId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
 
   const fetchOrders = async () => {
     try {
@@ -43,6 +44,30 @@ const Orders = () => {
     fetchOrders();
   }, []);
 
+  const handleStatusChange = async (orderId, newStatus) => {
+    try {
+      await api.patch(`/orders/${orderId}/status`, { status: newStatus });
+      await fetchOrders();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to update order status');
+    }
+  };
+
+  const handleNewOrder = () => {
+    setSelectedOrder(null);
+    setIsModalOpen(true);
+  };
+
+  const handleOrderSuccess = () => {
+    fetchOrders();
+    setSelectedOrder(null);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedOrder(null);
+  };
+
   const filteredOrders = orders.filter(order => 
     order.poNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
     order.productId.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -52,10 +77,6 @@ const Orders = () => {
 
   const toggleExpand = (orderId) => {
     setExpandedOrderId(expandedOrderId === orderId ? null : orderId);
-  };
-
-  const handleOrderSuccess = () => {
-    fetchOrders();
   };
 
   if (loading) return (
@@ -75,7 +96,7 @@ const Orders = () => {
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-semibold text-gray-900">Orders</h1>
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={handleNewOrder}
           className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
         >
           <PlusIcon className="h-5 w-5 mr-2" />
@@ -110,7 +131,7 @@ const Orders = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usage Details</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -129,29 +150,34 @@ const Orders = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{order.productId.styleNo}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{order.quantity}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                          ${order.status.toLowerCase() === 'pending' ? 'bg-yellow-100 text-yellow-800' : ''}
-                          ${order.status.toLowerCase() === 'completed' ? 'bg-green-100 text-green-800' : ''}
-                          ${order.status.toLowerCase() === 'cancelled' ? 'bg-red-100 text-red-800' : ''}
-                        `}>
-                          {order.status}
-                        </span>
+                        <select
+                          value={order.status}
+                          onChange={(e) => handleStatusChange(order._id, e.target.value)}
+                          className={`rounded-full text-xs font-medium px-2.5 py-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
+                            ${order.status.toLowerCase() === 'pending' ? 'bg-yellow-100 text-yellow-800' : ''}
+                            ${order.status.toLowerCase() === 'completed' ? 'bg-green-100 text-green-800' : ''}
+                            ${order.status.toLowerCase() === 'cancelled' ? 'bg-red-100 text-red-800' : ''}
+                          `}
+                        >
+                          <option value="PENDING">Pending</option>
+                          <option value="PRODUCING">Producing</option>
+                          <option value="COMPLETED">Completed</option>
+                        </select>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {new Date(order.orderDate).toLocaleDateString()}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         <button
-                          className="flex items-center gap-1 text-indigo-600 hover:underline focus:outline-none"
                           onClick={() => toggleExpand(order._id)}
-                          aria-expanded={expandedOrderId === order._id}
+                          className="text-gray-600 hover:text-gray-900"
+                          title="View Usage Details"
                         >
                           {expandedOrderId === order._id ? (
-                            <ChevronDownIcon className="h-4 w-4" />
+                            <ChevronDownIcon className="h-5 w-5" />
                           ) : (
-                            <ChevronRightIcon className="h-4 w-4" />
+                            <ChevronRightIcon className="h-5 w-5" />
                           )}
-                          {expandedOrderId === order._id ? 'Hide Details' : 'Show Details'}
                         </button>
                       </td>
                     </tr>
@@ -204,10 +230,12 @@ const Orders = () => {
         </div>
       </div>
 
+      {/* Order Form Modal */}
       <OrderFormModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={handleCloseModal}
         onSuccess={handleOrderSuccess}
+        order={selectedOrder}
       />
     </div>
   );
