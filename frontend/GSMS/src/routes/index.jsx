@@ -14,6 +14,7 @@ import ProductsPage from '../pages/products/ProductsPage';
 import ProductBOMPage from '../pages/products/ProductBOMPage';
 import UserManagementPage from '../pages/users/UserManagementPage';
 import Orders from '../pages/orders/Orders';
+import Production from '../pages/production/Production';
 
 // Protected route
 import ProtectedRoute from './ProtectedRoute';
@@ -125,7 +126,7 @@ const Routes = () => {
           children: [
             {
               index: true,
-              element: <ProductionPage />,
+              element: <Production />,
             },
           ],
         },
