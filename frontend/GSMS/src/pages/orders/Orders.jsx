@@ -11,6 +11,7 @@ const Orders = () => {
   const [expandedOrderId, setExpandedOrderId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [insufficientStockError, setInsufficientStockError] = useState(null);
 
   const fetchOrders = async () => {
     try {
@@ -46,6 +47,8 @@ const Orders = () => {
 
   const handleStatusChange = async (orderId, newStatus) => {
     try {
+      setError(null);
+      setInsufficientStockError(null);
       // Find the current order
       const currentOrder = orders.find(order => order._id === orderId);
       
@@ -58,7 +61,14 @@ const Orders = () => {
       await api.patch(`/orders/${orderId}/status`, { status: newStatus });
       await fetchOrders();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to update order status');
+      if (err.response?.data?.insufficientMaterials) {
+        setInsufficientStockError({
+          message: err.response.data.message,
+          materials: err.response.data.insufficientMaterials
+        });
+      } else {
+        setError(err.response?.data?.message || 'Failed to update order status');
+      }
     }
   };
 
@@ -107,12 +117,6 @@ const Orders = () => {
     </div>
   );
 
-  if (error) return (
-    <div className="text-red-600 text-center p-8 text-lg">
-      {error}
-    </div>
-  );
-
   return (
     <div className="p-8 max-w-[1400px] mx-auto">
       <div className="flex justify-between items-center mb-8">
@@ -125,6 +129,26 @@ const Orders = () => {
           New Order
         </button>
       </div>
+      
+      {/* Error Messages */}
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
+          <p className="text-red-600">{error}</p>
+        </div>
+      )}
+
+      {insufficientStockError && (
+        <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+          <p className="text-yellow-800 font-medium mb-2">{insufficientStockError.message}</p>
+          <ul className="list-disc list-inside text-yellow-700">
+            {insufficientStockError.materials.map((material, index) => (
+              <li key={index}>
+                {material.materialName}: Required {material.requiredQty}, Available {material.currentStock}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       
       {/* Search bar */}
       <div className="mb-6 max-w-lg">
@@ -224,7 +248,6 @@ const Orders = () => {
                                       <th className="px-2 py-1 text-xs font-semibold text-gray-600">Current Stock</th>
                                       <th className="px-2 py-1 text-xs font-semibold text-gray-600">Wastage</th>
                                       <th className="px-2 py-1 text-xs font-semibold text-gray-600">Waste %</th>
-                                      <th className="px-2 py-1 text-xs font-semibold text-gray-600">Unit</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -232,7 +255,7 @@ const Orders = () => {
                                       <tr key={material.materialId} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                                         <td className="px-2 py-1 text-xs text-gray-700">{material.materialName}</td>
                                         <td className="px-2 py-1 text-xs text-gray-700">{material.itemCode}</td>
-                                        <td className="px-2 py-1 text-xs text-gray-700">{material.requiredQty}</td>
+                                        <td className="px-2 py-1 text-xs text-gray-700">{material.requiredQty} {material.unit}</td>
                                         <td className="px-2 py-1 text-xs text-gray-700">{material.actualUsedQty}</td>
                                         <td
                                           className={`px-2 py-1 text-xs ${
@@ -247,7 +270,6 @@ const Orders = () => {
                                         </td>
                                         <td className="px-2 py-1 text-xs text-gray-700">{material.wastage}</td>
                                         <td className="px-2 py-1 text-xs text-gray-700">{material.wastePercentage}</td>
-                                        <td className="px-2 py-1 text-xs text-gray-700">{material.unit}</td>
                                       </tr>
                                     ))}
                                   </tbody>
