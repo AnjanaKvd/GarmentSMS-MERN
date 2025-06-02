@@ -6,6 +6,9 @@ const consumptionReportSchema = new mongoose.Schema({
     ref: 'RawMaterial',
     required: true
   },
+  materialName: String,
+  itemCode: String,
+  unit: String,
   requiredQty: {
     type: Number,
     required: true
@@ -14,9 +17,21 @@ const consumptionReportSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  standardWastage: {
+    type: Number,
+    default: 0
+  },
+  extraWastage: {
+    type: Number,
+    default: 0
+  },
   wastage: {
     type: Number,
     default: 0
+  },
+  wastePercentage: {
+    type: String,
+    default: '0.00'
   }
 });
 
