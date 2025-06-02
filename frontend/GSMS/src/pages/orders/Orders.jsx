@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
-import { MagnifyingGlassIcon, ChevronDownIcon, ChevronRightIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, ChevronDownIcon, ChevronRightIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import OrderFormModal from '../../components/orders/OrderFormModal';
+import DeleteOrderModal from '../../components/orders/DeleteOrderModal';
 
 const Orders = () => {
   const [orders, setOrders] = useState([]);
@@ -12,6 +13,8 @@ const Orders = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [insufficientStockError, setInsufficientStockError] = useState(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteSuccessMessage, setDeleteSuccessMessage] = useState(null);
 
   const fetchOrders = async () => {
     try {
@@ -100,6 +103,26 @@ const Orders = () => {
     setSelectedOrder(null);
   };
 
+  const handleDeleteOrder = (order) => {
+    setSelectedOrder(order);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleDeleteSuccess = (response) => {
+    setIsDeleteModalOpen(false);
+    setSelectedOrder(null);
+    fetchOrders();
+    setDeleteSuccessMessage(response.message || 'Order deleted successfully');
+    setTimeout(() => {
+      setDeleteSuccessMessage(null);
+    }, 5000);
+  };
+
+  const handleCloseDeleteModal = () => {
+    setIsDeleteModalOpen(false);
+    setSelectedOrder(null);
+  };
+
   const filteredOrders = orders.filter(order => 
     order.poNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
     order.productId.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -166,6 +189,12 @@ const Orders = () => {
         </div>
       </div>
 
+      {deleteSuccessMessage && (
+        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-md">
+          <p className="text-green-600">{deleteSuccessMessage}</p>
+        </div>
+      )}
+
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -216,17 +245,26 @@ const Orders = () => {
                         {new Date(order.orderDate).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <button
-                          onClick={() => toggleExpand(order._id)}
-                          className="text-gray-600 hover:text-gray-900"
-                          title="View Usage Details"
-                        >
-                          {expandedOrderId === order._id ? (
-                            <ChevronDownIcon className="h-5 w-5" />
-                          ) : (
-                            <ChevronRightIcon className="h-5 w-5" />
-                          )}
-                        </button>
+                        <div className="flex space-x-3">
+                          <button
+                            onClick={() => toggleExpand(order._id)}
+                            className="text-gray-600 hover:text-gray-900"
+                            title="View Usage Details"
+                          >
+                            {expandedOrderId === order._id ? (
+                              <ChevronDownIcon className="h-5 w-5" />
+                            ) : (
+                              <ChevronRightIcon className="h-5 w-5" />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteOrder(order)}
+                            className="text-red-600 hover:text-red-900"
+                            title="Delete Order"
+                          >
+                            <TrashIcon className="h-5 w-5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                     {expandedOrderId === order._id && (
@@ -308,6 +346,14 @@ const Orders = () => {
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         onSuccess={handleOrderSuccess}
+        order={selectedOrder}
+      />
+
+      {/* Delete Order Modal */}
+      <DeleteOrderModal
+        isOpen={isDeleteModalOpen}
+        onClose={handleCloseDeleteModal}
+        onSuccess={handleDeleteSuccess}
         order={selectedOrder}
       />
     </div>

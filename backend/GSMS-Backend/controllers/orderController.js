@@ -247,4 +247,38 @@ exports.getOrderUsage = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
+};
+
+// Delete order and associated production logs
+exports.deleteOrder = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  
+  try {
+    const { id } = req.params;
+    
+    // Check if order exists
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+    
+    // Delete all production logs associated with this order
+    const deletedLogs = await ProductionLog.deleteMany({ orderId: id }, { session });
+    
+    // Delete the order
+    await Order.findByIdAndDelete(id, { session });
+    
+    await session.commitTransaction();
+    
+    res.status(200).json({ 
+      message: 'Order deleted successfully', 
+      deletedProductionLogs: deletedLogs.deletedCount
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    res.status(500).json({ message: 'Server error', error: error.message });
+  } finally {
+    session.endSession();
+  }
 }; 

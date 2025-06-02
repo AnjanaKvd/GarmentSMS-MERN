@@ -29,4 +29,11 @@ router.patch(
   orderController.updateOrderStatus
 );
 
+// Delete order (Admin and Manager only)
+router.delete(
+  '/:id',
+  checkRole(['ADMIN', 'MANAGER']),
+  orderController.deleteOrder
+);
+
 module.exports = router; 
