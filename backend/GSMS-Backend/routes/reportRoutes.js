@@ -6,16 +6,22 @@ const { verifyToken, checkRole } = require('../middlewares/authMiddleware');
 // All routes require authentication
 router.use(verifyToken);
 
-// Get material summary report
-router.get('/summary', reportController.getMaterialSummary);
+// Fabric usage summary by date/order
+router.get('/fabric-usage', reportController.getFabricUsageSummary);
 
-// Get orders report
-router.get('/orders', reportController.getOrdersReport);
+// In-out stock balance
+router.get('/stock-balance', reportController.getStockBalance);
 
-// Export PDF report
-router.get('/download/pdf', reportController.exportPDF);
+// Order fulfillment status
+router.get('/order-fulfillment', reportController.getOrderFulfillment);
 
-// Export Excel report
-router.get('/download/xlsx', reportController.exportExcel);
+// Wastage analysis
+router.get('/wastage-analysis', reportController.getWastageAnalysis);
+
+// Export to Excel
+router.get('/export/excel', reportController.exportToExcel);
+
+// Export to PDF
+router.get('/export/pdf', reportController.exportToPDF);
 
 module.exports = router; 

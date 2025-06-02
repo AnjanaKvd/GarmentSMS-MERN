@@ -4,6 +4,7 @@ import authReducer from './slices/authSlice';
 import materialsReducer from './slices/materialsSlice';
 import productsReducer from './slices/productsSlice';
 import productionReducer from './slices/productionSlice';
+import reportsReducer from './slices/reportsSlice';
 
 const store = configureStore({
   reducer: {
@@ -11,6 +12,7 @@ const store = configureStore({
     materials: materialsReducer,
     products: productsReducer,
     production: productionReducer,
+    reports: reportsReducer,
     // Add other reducers here as your app grows
   },
   // Optional: add middleware here if needed
