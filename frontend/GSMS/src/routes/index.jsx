@@ -15,6 +15,7 @@ import ProductBOMPage from '../pages/products/ProductBOMPage';
 import UserManagementPage from '../pages/users/UserManagementPage';
 import Orders from '../pages/orders/Orders';
 import Production from '../pages/production/Production';
+import ReportsPage from '../pages/reports/ReportsPage';
 
 // Protected route
 import ProtectedRoute from './ProtectedRoute';
@@ -34,7 +35,6 @@ const NotFound = () => (
 
 // Placeholder components for future implementation
 const ProductionPage = () => <div>Production Page</div>;
-const ReportsPage = () => <div>Reports Page</div>;
 
 // Roles
 const ROLES = {

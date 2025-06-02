@@ -9,6 +9,14 @@ const materialRequirementSchema = new mongoose.Schema({
   quantityPerPiece: {
     type: Number,
     required: true
+  },
+  expectedWastagePercentage: {
+    type: Number,
+    default: 0
+  },
+  wastageRemarks: {
+    type: String,
+    default: ''
   }
 });
 
@@ -25,7 +33,11 @@ const productSchema = new mongoose.Schema({
     trim: true
   },
   description: String,
-  materialsRequired: [materialRequirementSchema]
+  materialsRequired: [materialRequirementSchema],
+  wastageRemarks: {
+    type: String,
+    default: ''
+  }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Product', productSchema); 

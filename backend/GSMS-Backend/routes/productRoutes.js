@@ -15,6 +15,9 @@ router.get('/:id', productController.getProductById);
 // Get BOM for a product
 router.get('/:id/bom', productController.getProductBOM);
 
+// Get product wastage settings
+router.get('/:id/wastage', productController.getProductWastage);
+
 // Create new product (Admin and Manager only)
 router.post(
   '/',
@@ -27,6 +30,13 @@ router.put(
   '/:id',
   checkRole(['ADMIN', 'MANAGER']),
   productController.updateProduct
+);
+
+// Update product wastage percentages
+router.patch(
+  '/:id/wastage',
+  checkRole(['ADMIN', 'MANAGER', 'PRODUCTION']),
+  productController.updateProductWastage
 );
 
 // Delete product (Admin and Manager only)
