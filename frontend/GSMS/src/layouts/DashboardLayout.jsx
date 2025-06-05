@@ -12,33 +12,61 @@ import {
   ChartBarIcon,
   BellIcon,
   UserIcon,
-  ArrowRightOnRectangleIcon
+  ArrowRightOnRectangleIcon,
+  ShieldCheckIcon
 } from '@heroicons/react/24/outline';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { logout } from '../redux/slices/authSlice';
+import { useEffect } from 'react';
 
 const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
-  const { user } = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
+  const { user, isAuthenticated } = useSelector((state) => state.auth);
+  
+  // Debug user role and auth state
+  console.log('User in DashboardLayout:', user);
+  console.log('Is authenticated:', isAuthenticated);
+  
+  // Define role-based permissions
   const isAdmin = user?.role === 'ADMIN';
-  const isManagerOrAdmin = user?.role === 'ADMIN' || user?.role === 'MANAGER';
+  const isManagerOrAdmin = ['ADMIN', 'MANAGER'].includes(user?.role);
   const isProductionOrHigher = ['ADMIN', 'MANAGER', 'PRODUCTION'].includes(user?.role);
+  const isViewer = user?.role === 'VIEWER';
 
+  console.log('Role checks:', { isAdmin, isManagerOrAdmin, isProductionOrHigher, isViewer });
+
+  // Define navigation items with role-based access control
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon, allowed: true },
     { name: 'Raw Materials', href: '/raw-materials', icon: CubeIcon, allowed: true },
     { name: 'Products & BOM', href: '/products', icon: ShoppingBagIcon, allowed: true },
-    { name: 'Orders', href: '/orders', icon: ClipboardDocumentListIcon, allowed: true },
-    { name: 'Production', href: '/production', icon: DocumentTextIcon, allowed: true },
-    { name: 'Reports', href: '/reports', icon: ChartBarIcon, allowed: true },
+    { name: 'Orders', href: '/orders', icon: ClipboardDocumentListIcon, allowed: isManagerOrAdmin || isProductionOrHigher },
+    { name: 'Production', href: '/production', icon: DocumentTextIcon, allowed: isProductionOrHigher },
+    { name: 'Reports', href: '/reports', icon: ChartBarIcon, allowed: isManagerOrAdmin || isProductionOrHigher || isViewer},
     { name: 'Users', href: '/users', icon: UserIcon, allowed: isAdmin },
   ];
 
+  console.log('Navigation items after definition:', navigation);
+  console.log('Filtered navigation items:', navigation.filter(item => item.allowed));
+
   const handleLogout = () => {
-    // Clear auth from localStorage
-    localStorage.removeItem('token');
+    // Dispatch logout action
+    dispatch(logout());
     // Redirect to login
     navigate('/login');
+  };
+  
+  // Get role display name
+  const getRoleDisplayName = (role) => {
+    switch(role) {
+      case 'admin': return 'Administrator';
+      case 'manager': return 'Manager';
+      case 'production': return 'Production Staff';
+      case 'viewer': return 'Viewer';
+      default: return role;
+    }
   };
 
   return (
@@ -154,10 +182,17 @@ const DashboardLayout = () => {
                       <UserIcon className="h-5 w-5 text-gray-500" />
                     </div>
                   </div>
-                  <div className="text-sm font-medium text-gray-900">Admin</div>
+                  <div className="flex flex-col">
+                    <div className="text-sm font-medium text-gray-900">{user?.username || 'User'}</div>
+                    <div className="text-xs text-gray-500 flex items-center">
+                      <ShieldCheckIcon className="h-3 w-3 mr-1" />
+                      {getRoleDisplayName(user?.role)}
+                    </div>
+                  </div>
                   <button
                     onClick={handleLogout}
                     className="p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none"
+                    title="Logout"
                   >
                     <ArrowRightOnRectangleIcon className="h-6 w-6" aria-hidden="true" />
                   </button>

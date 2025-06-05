@@ -9,42 +9,36 @@ const ProductsPage = () => {
   const dispatch = useDispatch();
   const { products, isLoading, error } = useSelector((state) => state.products);
   const { user } = useSelector((state) => state.auth);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState(null);
+  
   const [searchTerm, setSearchTerm] = useState('');
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [productToDelete, setProductToDelete] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  
+  // Define role-based permissions
+  const canAddEditProducts = ['ADMIN', 'MANAGER'].includes(user?.role);
+  const canDeleteProducts = ['ADMIN'].includes(user?.role);
+  const canViewProducts = ['ADMIN', 'MANAGER', 'PRODUCTION', 'VIEWER'].includes(user?.role);
 
   useEffect(() => {
     dispatch(fetchProducts());
   }, [dispatch]);
 
-  const openAddModal = () => {
+  const handleAddClick = () => {
     setSelectedProduct(null);
-    setIsModalOpen(true);
+    setShowAddModal(true);
   };
 
-  const openEditModal = (product) => {
+  const handleEditClick = (product) => {
     setSelectedProduct(product);
-    setIsModalOpen(true);
+    setShowEditModal(true);
   };
 
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setSelectedProduct(null);
+  const handleDeleteClick = (product) => {
+    setSelectedProduct(product);
+    setShowDeleteModal(true);
   };
-
-  const openDeleteModal = (product) => {
-    setProductToDelete(product);
-    setDeleteModalOpen(true);
-  };
-
-  const closeDeleteModal = () => {
-    setDeleteModalOpen(false);
-    setProductToDelete(null);
-  };
-
-  const canManageProducts = user && (user.role === 'ADMIN' || user.role === 'MANAGER');
 
   const filteredProducts = products.filter(product => 
     product.styleNo?.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -55,10 +49,11 @@ const ProductsPage = () => {
     <div className="container mx-auto px-4 py-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold text-gray-900">Products Management</h1>
-        {canManageProducts && (
+        {canAddEditProducts && (
           <button
-            onClick={openAddModal}
+            onClick={handleAddClick}
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            title="Add new product"
           >
             Add New Product
           </button>
@@ -102,7 +97,7 @@ const ProductsPage = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   BOM
                 </th>
-                {canManageProducts && (
+                {(canAddEditProducts || canDeleteProducts) && (
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
@@ -112,7 +107,7 @@ const ProductsPage = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={canManageProducts ? 5 : 4} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                  <td colSpan={(canAddEditProducts || canDeleteProducts) ? 5 : 4} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
                     No products found
                   </td>
                 </tr>
@@ -136,20 +131,26 @@ const ProductsPage = () => {
                         View BOM
                       </Link>
                     </td>
-                    {canManageProducts && (
+                    {(canAddEditProducts || canDeleteProducts) && (
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={() => openEditModal(product)}
-                          className="text-indigo-600 hover:text-indigo-900 mr-4"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => openDeleteModal(product)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          Delete
-                        </button>
+                        {canAddEditProducts && (
+                          <button
+                            onClick={() => handleEditClick(product)}
+                            className="text-indigo-600 hover:text-indigo-900 mr-4"
+                            title="Edit product"
+                          >
+                            Edit
+                          </button>
+                        )}
+                        {canDeleteProducts && (
+                          <button
+                            onClick={() => handleDeleteClick(product)}
+                            className="text-red-600 hover:text-red-900"
+                            title="Delete product"
+                          >
+                            Delete
+                          </button>
+                        )}
                       </td>
                     )}
                   </tr>
@@ -160,19 +161,28 @@ const ProductsPage = () => {
         </div>
       )}
 
+      {/* Add Product Modal */}
       <ProductFormModal
-        isOpen={isModalOpen}
-        onClose={closeModal}
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        product={null}
+      />
+
+      {/* Edit Product Modal */}
+      <ProductFormModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
         product={selectedProduct}
       />
 
+      {/* Delete Product Modal */}
       <DeleteProductModal
-        isOpen={deleteModalOpen}
-        onClose={closeDeleteModal}
-        product={productToDelete}
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        product={selectedProduct}
       />
     </div>
   );
 };
 
-export default ProductsPage; 
+export default ProductsPage;

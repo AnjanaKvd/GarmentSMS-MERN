@@ -38,10 +38,10 @@ const ProductionPage = () => <div>Production Page</div>;
 
 // Roles
 const ROLES = {
-  ADMIN: "ADMIN",
-  MANAGER: "MANAGER",
-  PRODUCTION: "PRODUCTION",
-  VIEWER: "VIEWER"
+  ADMIN: "admin",
+  MANAGER: "manager",
+  PRODUCTION: "production",
+  VIEWER: "viewer"
 };
 
 const Routes = () => {

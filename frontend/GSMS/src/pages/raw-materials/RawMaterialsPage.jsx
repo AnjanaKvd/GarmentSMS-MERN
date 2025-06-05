@@ -27,7 +27,10 @@ const RawMaterialsPage = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState(null);
   
+  // Define role-based permissions
   const canEdit = ['ADMIN', 'MANAGER'].includes(user?.role);
+  const canReceiveStock = ['ADMIN', 'MANAGER', 'PRODUCTION'].includes(user?.role);
+  const canDelete = ['ADMIN'].includes(user?.role);
 
   const [filteredMaterials, setFilteredMaterials] = useState([]);
 
@@ -114,6 +117,7 @@ const RawMaterialsPage = () => {
               type="button"
               onClick={() => setShowAddModal(true)}
               className="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:w-auto"
+              title="Add new material"
             >
               <PlusIcon className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
               Add Material
@@ -243,27 +247,35 @@ const RawMaterialsPage = () => {
                           >
                             View Ledger
                           </Link>
+                          {canReceiveStock && (
+                            <button
+                              onClick={() => handleReceiveClick(material)}
+                              className="text-green-600 hover:text-green-900 mr-3"
+                              title="Receive stock"
+                            >
+                              <ArrowDownOnSquareIcon className="h-5 w-5 inline" /> Receive
+                            </button>
+                          )}
                           {canEdit && (
-                            <>
-                              <button
-                                onClick={() => handleReceiveClick(material)}
-                                className="text-green-600 hover:text-green-900 mr-3"
-                              >
-                                <ArrowDownOnSquareIcon className="h-5 w-5 inline" /> Receive
-                              </button>
-                              <button
-                                onClick={() => handleEditClick(material)}
-                                className="text-blue-600 hover:text-blue-900 mr-3"
-                              >
-                                <PencilIcon className="h-5 w-5 inline" /> Edit
-                              </button>
-                              <button
-                                onClick={() => handleDeleteClick(material)}
-                                className="text-red-600 hover:text-red-900"
-                              >
-                                <TrashIcon className="h-5 w-5 inline" /> Delete
-                              </button>
-                            </>
+                            <button
+                              onClick={() => handleEditClick(material)}
+                              className="text-blue-600 hover:text-blue-900 mr-3"
+                              title="Edit material"
+                            >
+                              <PencilIcon className="h-5 w-5 inline" /> Edit
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              onClick={() => handleDeleteClick(material)}
+                              className="text-red-600 hover:text-red-900"
+                              title="Delete material"
+                            >
+                              <TrashIcon className="h-5 w-5 inline" /> Delete
+                            </button>
+                          )}
+                          {!canReceiveStock && !canEdit && !canDelete && (
+                            <span className="text-gray-400">No actions available</span>
                           )}
                         </td>
                       </tr>

@@ -1,17 +1,30 @@
 import React, { useState, useEffect } from 'react';
+import { useSelector } from 'react-redux';
 import api from '../../services/api';
-import { MagnifyingGlassIcon, ChevronDownIcon, ChevronRightIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, ChevronDownIcon, ChevronRightIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import OrderFormModal from '../../components/orders/OrderFormModal';
+import DeleteOrderModal from '../../components/orders/DeleteOrderModal';
 
 const Orders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Get user from Redux state
+  const { user } = useSelector((state) => state.auth);
+  
+  // Define role-based permissions
+  const canAddOrders = ['ADMIN', 'MANAGER'].includes(user?.role);
+  const canEditOrders = ['ADMIN', 'MANAGER'].includes(user?.role);
+  const canDeleteOrders = ['ADMIN'].includes(user?.role);
+  const canUpdateStatus = ['ADMIN', 'MANAGER', 'PRODUCTION'].includes(user?.role);
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedOrderId, setExpandedOrderId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [insufficientStockError, setInsufficientStockError] = useState(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteSuccessMessage, setDeleteSuccessMessage] = useState(null);
 
   const fetchOrders = async () => {
     try {
@@ -100,6 +113,26 @@ const Orders = () => {
     setSelectedOrder(null);
   };
 
+  const handleDeleteOrder = (order) => {
+    setSelectedOrder(order);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleDeleteSuccess = (response) => {
+    setIsDeleteModalOpen(false);
+    setSelectedOrder(null);
+    fetchOrders();
+    setDeleteSuccessMessage(response.message || 'Order deleted successfully');
+    setTimeout(() => {
+      setDeleteSuccessMessage(null);
+    }, 5000);
+  };
+
+  const handleCloseDeleteModal = () => {
+    setIsDeleteModalOpen(false);
+    setSelectedOrder(null);
+  };
+
   const filteredOrders = orders.filter(order => 
     order.poNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
     order.productId.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -121,13 +154,16 @@ const Orders = () => {
     <div className="p-8 max-w-[1400px] mx-auto">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-semibold text-gray-900">Orders</h1>
-        <button
-          onClick={handleNewOrder}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        >
-          <PlusIcon className="h-5 w-5 mr-2" />
-          New Order
-        </button>
+        {canAddOrders && (
+          <button
+            onClick={handleNewOrder}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            title="Create new order"
+          >
+            <PlusIcon className="h-5 w-5 mr-2" />
+            New Order
+          </button>
+        )}
       </div>
       
       {/* Error Messages */}
@@ -166,6 +202,12 @@ const Orders = () => {
         </div>
       </div>
 
+      {deleteSuccessMessage && (
+        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-md">
+          <p className="text-green-600">{deleteSuccessMessage}</p>
+        </div>
+      )}
+
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -196,37 +238,59 @@ const Orders = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{order.productId.styleNo}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{order.quantity}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <select
-                          value={order.status}
-                          onChange={(e) => handleStatusChange(order._id, e.target.value)}
-                          className={`rounded-full text-xs font-medium px-2.5 py-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
+                        {canUpdateStatus ? (
+                          <select
+                            value={order.status}
+                            onChange={(e) => handleStatusChange(order._id, e.target.value)}
+                            className={`rounded-full text-xs font-medium px-2.5 py-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
+                              ${order.status.toLowerCase() === 'pending' ? 'bg-yellow-100 text-yellow-800' : ''}
+                              ${order.status.toLowerCase() === 'producing' ? 'bg-blue-100 text-blue-800' : ''}
+                              ${order.status.toLowerCase() === 'completed' ? 'bg-green-100 text-green-800' : ''}
+                            `}
+                            title="Change order status"
+                          >
+                            {getAvailableStatuses(order.status).map(status => (
+                              <option key={status} value={status}>
+                                {status.charAt(0) + status.slice(1).toLowerCase()}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className={`inline-flex rounded-full text-xs font-medium px-2.5 py-0.5
                             ${order.status.toLowerCase() === 'pending' ? 'bg-yellow-100 text-yellow-800' : ''}
                             ${order.status.toLowerCase() === 'producing' ? 'bg-blue-100 text-blue-800' : ''}
                             ${order.status.toLowerCase() === 'completed' ? 'bg-green-100 text-green-800' : ''}
-                          `}
-                        >
-                          {getAvailableStatuses(order.status).map(status => (
-                            <option key={status} value={status}>
-                              {status.charAt(0) + status.slice(1).toLowerCase()}
-                            </option>
-                          ))}
-                        </select>
+                          `}>
+                            {order.status.charAt(0) + order.status.slice(1).toLowerCase()}
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {new Date(order.orderDate).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <button
-                          onClick={() => toggleExpand(order._id)}
-                          className="text-gray-600 hover:text-gray-900"
-                          title="View Usage Details"
-                        >
-                          {expandedOrderId === order._id ? (
-                            <ChevronDownIcon className="h-5 w-5" />
-                          ) : (
-                            <ChevronRightIcon className="h-5 w-5" />
+                        <div className="flex space-x-3">
+                          <button
+                            onClick={() => toggleExpand(order._id)}
+                            className="text-gray-600 hover:text-gray-900"
+                            title="View Usage Details"
+                          >
+                            {expandedOrderId === order._id ? (
+                              <ChevronDownIcon className="h-5 w-5" />
+                            ) : (
+                              <ChevronRightIcon className="h-5 w-5" />
+                            )}
+                          </button>
+                          {canDeleteOrders && (
+                            <button
+                              onClick={() => handleDeleteOrder(order)}
+                              className="text-red-600 hover:text-red-900"
+                              title="Delete Order"
+                            >
+                              <TrashIcon className="h-5 w-5" />
+                            </button>
                           )}
-                        </button>
+                        </div>
                       </td>
                     </tr>
                     {expandedOrderId === order._id && (
@@ -310,8 +374,16 @@ const Orders = () => {
         onSuccess={handleOrderSuccess}
         order={selectedOrder}
       />
+
+      {/* Delete Order Modal */}
+      <DeleteOrderModal
+        isOpen={isDeleteModalOpen}
+        onClose={handleCloseDeleteModal}
+        onSuccess={handleDeleteSuccess}
+        order={selectedOrder}
+      />
     </div>
   );
 };
 
-export default Orders; 
+export default Orders;
