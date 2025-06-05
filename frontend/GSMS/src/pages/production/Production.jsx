@@ -25,6 +25,14 @@ const Production = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [productionLogs, setProductionLogs] = useState([]);
   const { products } = useSelector(state => state.products);
+  
+  // Get user from Redux store
+  const { user } = useSelector((state) => state.auth);
+  
+  // Define role-based permissions
+  const canManageProduction = ['ADMIN', 'MANAGER', 'PRODUCTION'].includes(user?.role);
+  const canManageWastage = ['ADMIN', 'MANAGER', 'PRODUCTION'].includes(user?.role);
+  const canDeleteProduction = ['ADMIN'].includes(user?.role);
 
   // Fetch orders
   const fetchOrders = async () => {
@@ -270,22 +278,30 @@ const Production = () => {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                               <div className="flex space-x-3">
-                                <button
-                                  onClick={() => handleAddProductWastage(product)}
-                                  className="text-indigo-600 hover:text-indigo-900 inline-flex items-center"
-                                >
-                                  <PencilSquareIcon className="h-4 w-4 mr-1" />
-                                  {hasWastageSet ? 'Update Wastage' : 'Set Wastage'}
-                                </button>
+                                {canManageWastage && (
+                                  <button
+                                    onClick={() => handleAddProductWastage(product)}
+                                    className="text-indigo-600 hover:text-indigo-900 inline-flex items-center"
+                                    title={hasWastageSet ? 'Update product wastage' : 'Set product wastage'}
+                                  >
+                                    <PencilSquareIcon className="h-4 w-4 mr-1" />
+                                    {hasWastageSet ? 'Update Wastage' : 'Set Wastage'}
+                                  </button>
+                                )}
                                 
                                 {hasWastageSet && (
                                   <button
                                     onClick={() => handleViewProductWastage(product)}
                                     className="text-blue-600 hover:text-blue-900 inline-flex items-center"
+                                    title="View product wastage details"
                                   >
                                     <EyeIcon className="h-4 w-4 mr-1" />
                                     View Wastage
                                   </button>
+                                )}
+                                
+                                {!canManageWastage && !hasWastageSet && (
+                                  <span className="text-gray-400">No actions available</span>
                                 )}
                               </div>
                             </td>
@@ -363,21 +379,26 @@ const Production = () => {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                               <div className="flex space-x-3">
-                                <button
-                                  onClick={() => handleAddOrderWastage(order)}
-                                  className="font-medium text-indigo-600 hover:text-indigo-900"
-                                >
-                                  Add Extra Wastage
-                                </button>
+                                {canManageWastage && (
+                                  <button
+                                    onClick={() => handleAddOrderWastage(order)}
+                                    className="font-medium text-indigo-600 hover:text-indigo-900"
+                                    title="Add extra wastage for this order"
+                                  >
+                                    Add Extra Wastage
+                                  </button>
+                                )}
                                 <button
                                   onClick={() => handleViewOrderWastage(order)}
                                   className="font-medium text-blue-600 hover:text-blue-900"
+                                  title="View wastage details for this order"
                                 >
                                   View Wastage
                                 </button>
                                 <button
                                   onClick={() => toggleExpand(order._id || order.id)}
                                   className="text-gray-600 hover:text-gray-900"
+                                  title="Toggle production details"
                                 >
                                   {expandedOrderId === (order._id || order.id) ? (
                                     <ChevronDownIcon className="h-5 w-5" />
