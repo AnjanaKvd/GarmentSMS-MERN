@@ -38,10 +38,10 @@ const ProductionPage = () => <div>Production Page</div>;
 
 // Roles
 const ROLES = {
-  ADMIN: "admin",
-  MANAGER: "manager",
-  PRODUCTION: "production",
-  VIEWER: "viewer"
+  ADMIN: "ADMIN",
+  MANAGER: "MANAGER",
+  PRODUCTION: "PRODUCTION",
+  VIEWER: "VIEWER"
 };
 
 const Routes = () => {
@@ -140,12 +140,6 @@ const Routes = () => {
             },
           ],
         },
-      ],
-    },
-    // Admin-only routes
-    {
-      element: <ProtectedRoute allowedRoles={[ROLES.ADMIN]} />,
-      children: [
         {
           path: '/users',
           element: <DashboardLayout />,
