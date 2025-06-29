@@ -87,21 +87,6 @@ const OrderFormModal = ({ isOpen, onClose, onSuccess }) => {
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  <div>
-                    <label htmlFor="poNo" className="block text-sm font-medium text-gray-700">
-                      Purchase Order Number
-                    </label>
-                    <input
-                      type="text"
-                      id="poNo"
-                      name="poNo"
-                      value={formData.poNo}
-                      onChange={handleChange}
-                      required
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                      placeholder="Enter PO number"
-                    />
-                  </div>
 
                   <div>
                     <label htmlFor="productId" className="block text-sm font-medium text-gray-700">

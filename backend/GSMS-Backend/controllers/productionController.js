@@ -319,8 +319,12 @@ exports.deleteProductionLog = async (req, res) => {
           reportEntry.standardWastage -= (material.standardWastage || 0);
           reportEntry.extraWastage -= (material.extraWastage || 0);
           reportEntry.wastage = reportEntry.standardWastage + reportEntry.extraWastage;
-          reportEntry.wastePercentage = reportEntry.actualUsedQty ? 
-            ((reportEntry.wastage / reportEntry.actualUsedQty) * 100).toFixed(2) : '0.00';
+          
+          // Update totalRequiredQty when deleting wastage
+          reportEntry.totalRequiredQty = reportEntry.requiredQty + reportEntry.wastage;
+          
+          reportEntry.wastePercentage = reportEntry.requiredQty > 0 ? 
+            ((reportEntry.wastage / reportEntry.requiredQty) * 100).toFixed(2) : '0.00';
         }
       }
       
