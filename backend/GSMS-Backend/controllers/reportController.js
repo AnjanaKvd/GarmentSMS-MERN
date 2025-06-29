@@ -124,10 +124,10 @@ exports.getStockBalance = async (req, res) => {
     const materials = await RawMaterial.find(filter);
     
     const stockBalanceReport = await Promise.all(materials.map(async (material) => {
-      // Get all production logs that used this material
+      // Get all production logs that used this material and populate orderId to get poNo
       const productionLogs = await ProductionLog.find({
         'materialUsage.materialId': material._id
-      });
+      }).populate('orderId', 'poNo');
       
       // Calculate total received, used, and current balance
       const totalReceived = material.receivedBatches.reduce(
@@ -168,7 +168,7 @@ exports.getStockBalance = async (req, res) => {
             date: log.date,
             type: 'OUT',
             quantity: usage.usedQty || 0,
-            remarks: `Used for Order ${log.orderId}`,
+            remarks: `Used for Order ${log.orderId.poNo}`, // Use poNo instead of orderId
             balance: 0 // Will calculate later
           });
         }
