@@ -17,25 +17,25 @@ import {
 } from '@heroicons/react/24/outline';
 import { useSelector, useDispatch } from 'react-redux';
 import { logout } from '../redux/slices/authSlice';
-import { useEffect } from 'react';
+import { getUserFromToken } from '../redux/slices/authSlice';
+
 
 const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { user, isAuthenticated } = useSelector((state) => state.auth);
+  const { token, isAuthenticated } = useSelector((state) => state.auth);
+  
+  // Get user from token
+  const user = getUserFromToken(token);
   
   // Debug user role and auth state
-  console.log('User in DashboardLayout:', user);
-  console.log('Is authenticated:', isAuthenticated);
   
   // Define role-based permissions
   const isAdmin = user?.role === 'ADMIN';
   const isManagerOrAdmin = ['ADMIN', 'MANAGER'].includes(user?.role);
   const isProductionOrHigher = ['ADMIN', 'MANAGER', 'PRODUCTION'].includes(user?.role);
   const isViewer = user?.role === 'VIEWER';
-
-  console.log('Role checks:', { isAdmin, isManagerOrAdmin, isProductionOrHigher, isViewer });
 
   // Define navigation items with role-based access control
   const navigation = [
@@ -48,8 +48,6 @@ const DashboardLayout = () => {
     { name: 'Users', href: '/users', icon: UserIcon, allowed: isAdmin },
   ];
 
-  console.log('Navigation items after definition:', navigation);
-  console.log('Filtered navigation items:', navigation.filter(item => item.allowed));
 
   const handleLogout = () => {
     // Dispatch logout action

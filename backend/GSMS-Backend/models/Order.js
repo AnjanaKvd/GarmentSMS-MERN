@@ -29,6 +29,10 @@ const consumptionReportSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  totalRequiredQty: {
+    type: Number,
+    default: 0
+  },
   wastePercentage: {
     type: String,
     default: '0.00'
@@ -63,4 +67,4 @@ const orderSchema = new mongoose.Schema({
   consumptionReport: [consumptionReportSchema]
 }, { timestamps: true });
 
-module.exports = mongoose.model('Order', orderSchema); 
+module.exports = mongoose.model('Order', orderSchema);

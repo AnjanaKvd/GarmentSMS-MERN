@@ -4,9 +4,11 @@ import AddUserModal from './AddUserModal';
 import EditUserModal from './EditUserModal';
 import api from '../../services/api';
 import { useSelector } from 'react-redux';
+import { getUserFromToken } from '../../redux/slices/authSlice';
 
 const UserManagementPage = () => {
-  const { user } = useSelector((state) => state.auth);
+  const { token } = useSelector((state) => state.auth);
+const user = getUserFromToken(token);;
   const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);

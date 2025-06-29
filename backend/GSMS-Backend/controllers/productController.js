@@ -29,13 +29,9 @@ exports.getProductById = async (req, res) => {
 // Create new product
 exports.createProduct = async (req, res) => {
   try {
-    const { styleNo, itemName, description, materialsRequired } = req.body;
-    
-    // Check if product with same style number exists
-    const existingProduct = await Product.findOne({ styleNo });
-    if (existingProduct) {
-      return res.status(400).json({ message: 'Product with this style number already exists' });
-    }
+    const {itemName, description, materialsRequired } = req.body;
+    const productsCount = await Product.countDocuments();
+    const styleNo = `ST${(productsCount + 1).toString().padStart(4, '0')}`;
     
     // Validate materials
     if (materialsRequired && materialsRequired.length > 0) {
@@ -312,18 +308,22 @@ const updateOrderStandardWastage = async (orderId) => {
       
       if (materialIndex !== -1) {
         const requiredQty = material.quantityPerPiece * order.quantity;
-        const standardWastage = (requiredQty * expectedWastagePercentage) / 100;
+        const standardWastage = parseFloat(((requiredQty * expectedWastagePercentage) / 100).toFixed(4));
         
         // Update standard wastage
         consumptionReport[materialIndex].standardWastage = standardWastage;
         consumptionReport[materialIndex].wastage = 
           standardWastage + (consumptionReport[materialIndex].extraWastage || 0);
         
+        // Update totalRequiredQty with the new wastage
+        consumptionReport[materialIndex].totalRequiredQty = 
+          consumptionReport[materialIndex].requiredQty + consumptionReport[materialIndex].wastage;
+        
         // Recalculate wastage percentage
         const actualUsedQty = consumptionReport[materialIndex].actualUsedQty || requiredQty;
         if (actualUsedQty > 0) {
           consumptionReport[materialIndex].wastePercentage = 
-            ((consumptionReport[materialIndex].wastage / actualUsedQty) * 100).toFixed(2);
+            ((consumptionReport[materialIndex].wastage / actualUsedQty) * 100).toFixed(4);
         }
       }
     });

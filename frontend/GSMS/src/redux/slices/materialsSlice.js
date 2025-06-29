@@ -97,7 +97,15 @@ export const receiveMaterialStock = createAsyncThunk(
         return rejectWithValue('Invalid material ID');
       }
       console.log("Receiving stock for material with ID:", id);
-      const response = await api.post(`/materials/${id}/receive`, stockData);
+      
+      // Prepare the data for the API
+      const apiData = {
+        quantity: stockData.quantity,
+        date: stockData.date,
+        description: stockData.description || ''
+      };
+      
+      const response = await api.post(`/materials/${id}/update-stock`, apiData);
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -120,6 +128,28 @@ export const deleteMaterial = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.message || 'Failed to delete material'
+      );
+    }
+  }
+);
+
+// Add this after the deleteMaterial thunk
+
+// Delete stock record
+export const deleteStockRecord = createAsyncThunk(
+  'materials/deleteStockRecord',
+  async ({ materialId, batchId }, { rejectWithValue }) => {
+    try {
+      if (!materialId || materialId === 'undefined' || !batchId) {
+        return rejectWithValue('Invalid material ID or batch ID');
+      }
+      console.log("Deleting stock record for material ID:", materialId, "batch ID:", batchId);
+      
+      const response = await api.delete(`/materials/${materialId}/stock-records/${batchId}`);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to delete stock record'
       );
     }
   }
@@ -252,6 +282,29 @@ const materialsSlice = createSlice({
         );
       })
       .addCase(deleteMaterial.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      
+      // Delete stock record
+      .addCase(deleteStockRecord.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(deleteStockRecord.fulfilled, (state, action) => {
+        state.isLoading = false;
+        // Update the current material with the returned data
+        state.currentMaterial = action.payload.material;
+        
+        // Also update the material in the materials array if it exists
+        const index = state.materials.findIndex(
+          (material) => (material.id || material._id) === (action.payload.material.id || action.payload.material._id)
+        );
+        if (index !== -1) {
+          state.materials[index] = action.payload.material;
+        }
+      })
+      .addCase(deleteStockRecord.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       });

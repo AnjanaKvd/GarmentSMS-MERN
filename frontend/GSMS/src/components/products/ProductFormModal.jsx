@@ -4,13 +4,13 @@ import { createProduct, updateProduct } from '../../redux/slices/productsSlice';
 import { fetchMaterials } from '../../redux/slices/materialsSlice';
 import { useNotification } from '../common/Notification';
 import { XMarkIcon } from '@heroicons/react/24/outline';
+import { Link } from 'react-router-dom';
 
 const ProductFormModal = ({ isOpen, onClose, product = null }) => {
   const dispatch = useDispatch();
   const { showNotification } = useNotification();
   const { materials } = useSelector((state) => state.materials);
   const [formData, setFormData] = useState({
-    styleNo: '',
     itemName: '',
     description: '',
     materialsRequired: []
@@ -28,7 +28,6 @@ const ProductFormModal = ({ isOpen, onClose, product = null }) => {
     
     if (product) {
       setFormData({
-        styleNo: product.styleNo || '',
         itemName: product.itemName || '',
         description: product.description || '',
         materialsRequired: product.materialsRequired || []
@@ -36,7 +35,6 @@ const ProductFormModal = ({ isOpen, onClose, product = null }) => {
       setErrors({});
     } else {
       setFormData({
-        styleNo: '',
         itemName: '',
         description: '',
         materialsRequired: []
@@ -141,10 +139,6 @@ const ProductFormModal = ({ isOpen, onClose, product = null }) => {
   const validateForm = () => {
     const newErrors = {};
     
-    if (!formData.styleNo.trim()) {
-      newErrors.styleNo = 'Style No is required';
-    }
-    
     if (!formData.itemName.trim()) {
       newErrors.itemName = 'Item Name is required';
     }
@@ -167,10 +161,10 @@ const ProductFormModal = ({ isOpen, onClose, product = null }) => {
     try {
       if (product) {
         await dispatch(updateProduct({ id: product.id || product._id, productData: formData })).unwrap();
-        showNotification(`Product ${formData.itemName} (${formData.styleNo}) updated successfully`, 'success');
+        showNotification(`Product ${formData.itemName} updated successfully`, 'success');
       } else {
         await dispatch(createProduct(formData)).unwrap();
-        showNotification(`Product ${formData.itemName} (${formData.styleNo}) created successfully`, 'success');
+        showNotification(`Product ${formData.itemName} created successfully`, 'success');
       }
       onClose();
     } catch (error) {
@@ -206,20 +200,6 @@ const ProductFormModal = ({ isOpen, onClose, product = null }) => {
                 <div className="mt-2">
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">Style No *</label>
-                      <input
-                        type="text"
-                        name="styleNo"
-                        value={formData.styleNo}
-                        onChange={handleChange}
-                        className={`mt-1 block w-full border ${errors.styleNo ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
-                      />
-                      {errors.styleNo && (
-                        <p className="mt-1 text-sm text-red-600">{errors.styleNo}</p>
-                      )}
-                    </div>
-                    
-                    <div>
                       <label className="block text-sm font-medium text-gray-700">Item Name *</label>
                       <input
                         type="text"
@@ -247,31 +227,32 @@ const ProductFormModal = ({ isOpen, onClose, product = null }) => {
                     <div className="border-t border-gray-200 pt-4">
                       <h4 className="text-md font-medium text-gray-900">Bill of Materials *</h4>
                       
-                      {/* Material selection with built-in search */}
-                      <div className="mt-2 space-y-2">
-                        <div className="flex-1 relative">
-                          <select
-                            name="materialId"
-                            value={materialInput.materialId}
-                            onChange={handleMaterialInputChange}
-                            className={`block w-full border ${errors.materialId ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
-                          >
-                            <option value="">Search and select material...</option>
-                            {materials.map((material) => (
-                              <option 
-                                key={material.id || material._id} 
-                                value={material.id || material._id}
-                              >
-                                {material.name || material.itemName} ({material.itemCode})
-                              </option>
-                            ))}
-                          </select>
-                          {errors.materialId && (
-                            <p className="mt-1 text-sm text-red-600">{errors.materialId}</p>
-                          )}
-                        </div>
-                        <div className="flex space-x-2">
+                      <div className="mt-2">
+                        <div className="flex space-x-2 items-end">
+                          <div className="flex-1">
+                            <label className="block text-sm font-medium text-gray-700">Material</label>
+                            <select
+                              name="materialId"
+                              value={materialInput.materialId}
+                              onChange={handleMaterialInputChange}
+                              className={`block w-full border ${errors.materialId ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                            >
+                              <option value="">Select material...</option>
+                              {materials.map((material) => (
+                                <option 
+                                  key={material.id || material._id} 
+                                  value={material.id || material._id}
+                                >
+                                  {material.name || material.itemName} ({material.itemCode})
+                                </option>
+                              ))}
+                            </select>
+                            {errors.materialId && (
+                              <p className="mt-1 text-sm text-red-600">{errors.materialId}</p>
+                            )}
+                          </div>
                           <div className="w-32">
+                            <label className="block text-sm font-medium text-gray-700">Quantity</label>
                             <input
                               type="number"
                               name="quantityPerPiece"
@@ -342,6 +323,10 @@ const ProductFormModal = ({ isOpen, onClose, product = null }) => {
                           )
                         )}
                       </div>
+                    </div>
+                    
+                    <div className="mt-4 text-sm text-gray-600 italic">
+                      Note: Add without wastage. Wastages can be added from the <Link to="/production" className="text-indigo-600 hover:text-indigo-800">production</Link> page.
                     </div>
                   </form>
                 </div>

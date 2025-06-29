@@ -37,20 +37,17 @@ exports.getOrderById = async (req, res) => {
 // Create new order
 exports.createOrder = async (req, res) => {
   try {
-    const { poNo, productId, quantity } = req.body;
+    const { productId, quantity } = req.body;
     
     // Validate inputs
-    if (!poNo || !productId || !quantity || quantity <= 0) {
+    if ( !productId || !quantity || quantity <= 0) {
       return res.status(400).json({ 
-        message: 'PO number, product ID, and valid quantity are required'
+        message: ' product ID, and valid quantity are required'
       });
     }
     
-    // Check if order with same PO number exists
-    const existingOrder = await Order.findOne({ poNo });
-    if (existingOrder) {
-      return res.status(400).json({ message: 'Order with this PO number already exists' });
-    }
+    const orderCount = await Order.countDocuments();
+    const poNo = `PO${(orderCount + 1).toString().padStart(4, '0')}`;
     
     // Check if product exists
     const product = await Product.findById(productId).populate('materialsRequired.materialId');
@@ -64,7 +61,7 @@ exports.createOrder = async (req, res) => {
       const requiredQty = material.quantityPerPiece * quantity;
       
       // Calculate standard wastage based on the expected wastage percentage
-      const standardWastage = (requiredQty * (material.expectedWastagePercentage || 0)) / 100;
+      const standardWastage = parseFloat(((requiredQty * (material.expectedWastagePercentage || 0)) / 100).toFixed(4));
       
       // Add material name and item code if available
       let materialName = '';
@@ -85,11 +82,12 @@ exports.createOrder = async (req, res) => {
         itemCode,
         unit,
         requiredQty,
-        actualUsedQty: 0,
+        actualUsedQty: parseFloat((requiredQty + standardWastage).toFixed(4)),
         standardWastage,
         extraWastage: 0,
         wastage: standardWastage, // Initial wastage is just the standard wastage
-        wastePercentage: standardWastage > 0 ? ((standardWastage / requiredQty) * 100).toFixed(2) : '0.00'
+        totalRequiredQty: parseFloat((requiredQty + standardWastage).toFixed(4)), // Add this line
+        wastePercentage: standardWastage > 0 ? ((standardWastage / requiredQty) * 100).toFixed(2) : '0.00',
       };
     });
     
@@ -221,6 +219,7 @@ exports.getOrderUsage = async (req, res) => {
         standardWastage: material.standardWastage || 0,
         extraWastage: material.extraWastage || 0,
         wastage: material.wastage || 0,
+        totalRequiredQty: material.totalRequiredQty || (material.requiredQty + material.wastage) || 0, // Add this line
         wastePercentage: material.wastePercentage || '0.00',
         wastageHistory: materialWastageHistory
       };
@@ -281,4 +280,4 @@ exports.deleteOrder = async (req, res) => {
   } finally {
     session.endSession();
   }
-}; 
+};

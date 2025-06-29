@@ -8,6 +8,7 @@ import ViewProductWastageModal from '../../components/production/ViewProductWast
 import ViewOrderWastageModal from '../../components/production/ViewOrderWastageModal';
 import { fetchProducts } from '../../redux/slices/productsSlice';
 import { Tab } from '@headlessui/react';
+import { getUserFromToken } from '../../redux/slices/authSlice';
 
 const Production = () => {
   const dispatch = useDispatch();
@@ -27,7 +28,8 @@ const Production = () => {
   const { products } = useSelector(state => state.products);
   
   // Get user from Redux store
-  const { user } = useSelector((state) => state.auth);
+  const { token } = useSelector((state) => state.auth);
+const user = getUserFromToken(token);;
   
   // Define role-based permissions
   const canManageProduction = ['ADMIN', 'MANAGER', 'PRODUCTION'].includes(user?.role);

@@ -40,7 +40,7 @@ const ViewProductWastageModal = ({ isOpen, onClose, product }) => {
   const calculateWastageQty = (material) => {
     // If wastage percentage is set, calculate the wastage quantity
     if ((material.quantityPerPiece || 0) > 0 && (material.expectedWastagePercentage || 0) > 0) {
-      return ((material.quantityPerPiece * material.expectedWastagePercentage) / 100).toFixed(2);
+      return ((material.quantityPerPiece * material.expectedWastagePercentage) / 100).toFixed(4);
     }
     return '0.00';
   };
@@ -96,7 +96,6 @@ const ViewProductWastageModal = ({ isOpen, onClose, product }) => {
                     <tr>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Material</th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Item Code</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Unit</th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Qty/Piece</th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Expected Wastage %</th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Expected Wastage Qty</th>
@@ -113,10 +112,7 @@ const ViewProductWastageModal = ({ isOpen, onClose, product }) => {
                           <div className="text-sm text-gray-500">{material.itemCode || '-'}</div>
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap">
-                          <div className="text-sm text-gray-500">{material.unit || '-'}</div>
-                        </td>
-                        <td className="px-3 py-2 whitespace-nowrap">
-                          <div className="text-sm text-gray-500">{material.quantityPerPiece || 0}</div>
+                          <div className="text-sm text-gray-500">{material.quantityPerPiece || 0 } {material.unit}</div>
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap">
                           <div className="text-sm text-gray-900">{material.expectedWastagePercentage || 0}%</div>

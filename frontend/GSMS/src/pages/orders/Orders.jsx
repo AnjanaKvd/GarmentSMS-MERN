@@ -4,6 +4,7 @@ import api from '../../services/api';
 import { MagnifyingGlassIcon, ChevronDownIcon, ChevronRightIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import OrderFormModal from '../../components/orders/OrderFormModal';
 import DeleteOrderModal from '../../components/orders/DeleteOrderModal';
+import { getUserFromToken } from '../../redux/slices/authSlice';
 
 const Orders = () => {
   const [orders, setOrders] = useState([]);
@@ -11,7 +12,8 @@ const Orders = () => {
   const [error, setError] = useState(null);
   
   // Get user from Redux state
-  const { user } = useSelector((state) => state.auth);
+  const { token } = useSelector((state) => state.auth);
+  const user = getUserFromToken(token);;
   
   // Define role-based permissions
   const canAddOrders = ['ADMIN', 'MANAGER'].includes(user?.role);
@@ -306,16 +308,15 @@ const Orders = () => {
                                   <thead className="bg-gray-100">
                                     <tr>
                                       <th className="px-2 py-1 text-xs font-semibold text-gray-600">Material Name</th>
-                                      <th className="px-2 py-1 text-xs font-semibold text-gray-600">Item Code</th>
-                                      <th className="px-2 py-1 text-xs font-semibold text-gray-600">Required Qty</th>
-                                      <th className="px-2 py-1 text-xs font-semibold text-gray-600">Used Qty</th>
+                                      <th className="px-2 py-1 text-xs font-semibold text-gray-600">Material Code</th>
+                                      <th className="px-2 py-1 text-xs font-semibold text-gray-600">Standard Required Qty</th>
+                                      <th className="px-2 py-1 text-xs font-semibold text-gray-600">Product Wastage</th>
+                                      <th className="px-2 py-1 text-xs font-semibold text-gray-600">Order Wastage</th>
+                                      <th className="px-2 py-1 text-xs font-semibold text-gray-600">Total Wastage</th>
+                                      <th className="px-2 py-1 text-xs font-semibold text-gray-600">Total Required Qty</th>
                                       {order.status === 'PENDING' && (
                                         <th className="px-2 py-1 text-xs font-semibold text-gray-600">Current Stock</th>
                                       )}
-                                      <th className="px-2 py-1 text-xs font-semibold text-gray-600">Standard Wastage</th>
-                                      <th className="px-2 py-1 text-xs font-semibold text-gray-600">Extra Wastage</th>
-                                      <th className="px-2 py-1 text-xs font-semibold text-gray-600">Total Wastage</th>
-                                      <th className="px-2 py-1 text-xs font-semibold text-gray-600">Waste %</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -324,29 +325,31 @@ const Orders = () => {
                                         <td className="px-2 py-1 text-xs text-gray-700">{material.materialName}</td>
                                         <td className="px-2 py-1 text-xs text-gray-700">{material.itemCode}</td>
                                         <td className="px-2 py-1 text-xs text-gray-700">{material.requiredQty} {material.unit}</td>
-                                        <td className="px-2 py-1 text-xs text-gray-700">{material.actualUsedQty || material.requiredQty}</td>
+                                        <td className="px-2 py-1 text-xs text-gray-700">{material.standardWastage || 0} {material.unit}</td>
+                                        <td className="px-2 py-1 text-xs text-gray-700">{material.extraWastage || 0} {material.unit}</td>
+                                        <td className="px-2 py-1 text-xs text-red-700">
+                                          {((material.standardWastage || 0) + (material.extraWastage || 0))} {material.unit} ({material.wastePercentage || ((material.standardWastage || 0) + (material.extraWastage || 0)) > 0 ?
+                                            `${((((material.standardWastage || 0) + (material.extraWastage || 0)) / (material.actualUsedQty || material.requiredQty)) * 100).toFixed(2)}%` :
+                                            '0.00%'})
+                                        </td>
+                                        <td className="px-2 py-1 text-xs text-blue-700 font-bold">{material.totalRequiredQty} {material.unit}</td>
                                         {order.status === 'PENDING' && (
                                           <td
                                             className={`px-2 py-1 text-xs ${
                                               material.currentStock < material.requiredQty
                                               ? 'text-red-600 font-bold'
-                                              : (material.requiredQty / material.currentStock) * 100 > 80
+                                              : (material.totalRequiredQty / material.currentStock) * 100 > 80
                                               ? 'text-yellow-600 font-bold'
                                               : 'text-green-600 font-bold'
                                             }`}
                                           >
-                                            {material.currentStock} ({material.currentStock - material.requiredQty})
+                                            {material.currentStock} {material.unit} [in stock]
+                                            ({material.currentStock - material.totalRequiredQty} {material.unit} [left])
                                           </td>
                                         )}
-                                        <td className="px-2 py-1 text-xs text-gray-700">{material.standardWastage || 0}</td>
-                                        <td className="px-2 py-1 text-xs text-gray-700 font-medium text-red-600">{material.extraWastage || 0}</td>
+                                        
                                         <td className="px-2 py-1 text-xs text-gray-700">
-                                          {((material.standardWastage || 0) + (material.extraWastage || 0)).toFixed(2)}
-                                        </td>
-                                        <td className="px-2 py-1 text-xs text-gray-700">
-                                          {material.wastePercentage || ((material.standardWastage || 0) + (material.extraWastage || 0)) > 0 ?
-                                            `${((((material.standardWastage || 0) + (material.extraWastage || 0)) / (material.actualUsedQty || material.requiredQty)) * 100).toFixed(2)}%` :
-                                            '0.00%'
+                                          {
                                           }
                                         </td>
                                       </tr>

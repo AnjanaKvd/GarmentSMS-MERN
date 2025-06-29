@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { fetchMaterials, clearMaterialError } from '../../redux/slices/materialsSlice';
 import MaterialFormModal from '../../components/raw-materials/MaterialFormModal';
 import ReceiveStockModal from '../../components/raw-materials/ReceiveStockModal';
 import DeleteConfirmationModal from '../../components/raw-materials/DeleteConfirmationModal';
+import { getUserFromToken } from '../../redux/slices/authSlice';
 
 // Icons from Heroicons
 import { 
@@ -17,8 +18,10 @@ import {
 
 const RawMaterialsPage = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate(); // Added useNavigate hook
   const { materials, isLoading, error } = useSelector((state) => state.materials);
-  const { user } = useSelector((state) => state.auth);
+  const { token } = useSelector((state) => state.auth);
+  const user = getUserFromToken(token);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -59,7 +62,8 @@ const RawMaterialsPage = () => {
     setSearchTerm(e.target.value);
   };
 
-  const handleEditClick = (material) => {
+  // Keep the existing handler functions but rename them to match what's used in the JSX
+  const handleEditMaterial = (material) => {
     if (!material || (!material.id && !material._id)) {
       console.error("Invalid material for editing", material);
       return;
@@ -68,7 +72,7 @@ const RawMaterialsPage = () => {
     setShowEditModal(true);
   };
 
-  const handleReceiveClick = (material) => {
+  const handleReceiveStock = (material) => {
     if (!material || (!material.id && !material._id)) {
       console.error("Invalid material for receiving stock", material);
       return;
@@ -77,7 +81,7 @@ const RawMaterialsPage = () => {
     setShowReceiveModal(true);
   };
 
-  const handleDeleteClick = (material) => {
+  const handleDeleteMaterial = (material) => {
     if (!material || (!material.id && !material._id)) {
       console.error("Invalid material for deletion", material);
       return;
@@ -165,12 +169,7 @@ const RawMaterialsPage = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th 
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Item Code
-                    </th>
+                  
                     <th 
                       scope="col"
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
@@ -223,11 +222,13 @@ const RawMaterialsPage = () => {
                       </td>
                     </tr>
                   ) : (
+                    // Fixed the nested mapping issue
                     filteredMaterials.map((material) => (
-                      <tr key={material.id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {material.itemCode}
-                        </td>
+                      <tr 
+                        key={material.id || material._id} 
+                        className="hover:bg-gray-50 cursor-pointer"
+                        onClick={() => navigate(`/raw-materials/${material.id || material._id}/ledger`)}
+                      >
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {material.name}
                         </td>
@@ -238,45 +239,49 @@ const RawMaterialsPage = () => {
                           {material.currentStock} {material.unit}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(material.updatedDate).toLocaleDateString()}
+                          {new Date(material.updatedDate).toLocaleString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <Link
-                            to={`/raw-materials/${material.id || material._id}/ledger`}
-                            className="text-indigo-600 hover:text-indigo-900 mr-3"
-                          >
-                            View Ledger
-                          </Link>
-                          {canReceiveStock && (
-                            <button
-                              onClick={() => handleReceiveClick(material)}
-                              className="text-green-600 hover:text-green-900 mr-3"
+                          <div className="flex justify-end space-x-2" onClick={(e) => e.stopPropagation()}>
+                      
+                            {canReceiveStock && (
+                              <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleReceiveStock(material);
+                              }}
                               title="Receive stock"
+                              className="text-green-600 hover:text-green-900"
                             >
-                              <ArrowDownOnSquareIcon className="h-5 w-5 inline" /> Receive
+                              Receive
                             </button>
-                          )}
-                          {canEdit && (
-                            <button
-                              onClick={() => handleEditClick(material)}
-                              className="text-blue-600 hover:text-blue-900 mr-3"
-                              title="Edit material"
-                            >
-                              <PencilIcon className="h-5 w-5 inline" /> Edit
-                            </button>
-                          )}
-                          {canDelete && (
-                            <button
-                              onClick={() => handleDeleteClick(material)}
-                              className="text-red-600 hover:text-red-900"
-                              title="Delete material"
-                            >
-                              <TrashIcon className="h-5 w-5 inline" /> Delete
-                            </button>
-                          )}
-                          {!canReceiveStock && !canEdit && !canDelete && (
-                            <span className="text-gray-400">No actions available</span>
-                          )}
+                            
+                            )}
+                            {canEdit && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditMaterial(material);
+                                }}
+                                title="Edit item"
+                                className="text-blue-600 hover:text-blue-900"
+                              >
+                                Edit
+                              </button>
+                            )}
+                            {canDelete && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteMaterial(material);
+                                }}
+                                title="Delete item"
+                                className="text-red-600 hover:text-red-900"
+                              >
+                                Delete
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))
