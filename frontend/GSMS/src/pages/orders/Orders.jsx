@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import api from '../../services/api';
-import { MagnifyingGlassIcon, ChevronDownIcon, ChevronRightIcon, PlusIcon, TrashIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, ChevronDownIcon, ChevronRightIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import OrderFormModal from '../../components/orders/OrderFormModal';
 import DeleteOrderModal from '../../components/orders/DeleteOrderModal';
 import OrderDetailsModal from '../../components/orders/OrderDetailsModal';
@@ -331,7 +331,6 @@ const Orders = () => {
                               className="text-blue-600 hover:text-blue-900"
                               title="Edit Order"
                             >
-                              <PencilIcon className="h-5 w-5" />
                             </button>
                           )}
                           {canDeleteOrders && (
