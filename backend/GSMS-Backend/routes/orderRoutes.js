@@ -22,6 +22,13 @@ router.post(
   orderController.createOrder
 );
 
+// Update order details (Admin and Manager only)
+router.patch(
+  '/:id',
+  checkRole(['ADMIN', 'MANAGER']),
+  orderController.updateOrderDetails
+);
+
 // Update order status (Admin, Manager, Production roles)
 router.patch(
   '/:id/status',
@@ -36,4 +43,4 @@ router.delete(
   orderController.deleteOrder
 );
 
-module.exports = router; 
+module.exports = router;
