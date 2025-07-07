@@ -4,6 +4,8 @@ import api from '../../services/api';
 import { MagnifyingGlassIcon, ChevronDownIcon, ChevronRightIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import OrderFormModal from '../../components/orders/OrderFormModal';
 import DeleteOrderModal from '../../components/orders/DeleteOrderModal';
+import OrderDetailsModal from '../../components/orders/OrderDetailsModal';
+import { getUserFromToken } from '../../redux/slices/authSlice';
 
 const Orders = () => {
   const [orders, setOrders] = useState([]);
@@ -11,7 +13,8 @@ const Orders = () => {
   const [error, setError] = useState(null);
   
   // Get user from Redux state
-  const { user } = useSelector((state) => state.auth);
+  const { token } = useSelector((state) => state.auth);
+  const user = getUserFromToken(token);
   
   // Define role-based permissions
   const canAddOrders = ['ADMIN', 'MANAGER'].includes(user?.role);
@@ -25,6 +28,8 @@ const Orders = () => {
   const [insufficientStockError, setInsufficientStockError] = useState(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteSuccessMessage, setDeleteSuccessMessage] = useState(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [updateSuccessMessage, setUpdateSuccessMessage] = useState(null);
 
   const fetchOrders = async () => {
     try {
@@ -38,7 +43,6 @@ const Orders = () => {
               usage: usageResponse.data.usage
             };
           } catch (err) {
-            console.error(`Failed to fetch usage for order ${order._id}:`, err);
             return {
               ...order,
               usage: []
@@ -133,6 +137,25 @@ const Orders = () => {
     setSelectedOrder(null);
   };
 
+  // New handlers for order details modal
+  const handleViewOrderDetails = (order) => {
+    setSelectedOrder(order);
+    setIsDetailsModalOpen(true);
+  };
+
+  const handleOrderUpdateSuccess = (updatedOrder) => {
+    fetchOrders();
+    setUpdateSuccessMessage('Order updated successfully');
+    setTimeout(() => {
+      setUpdateSuccessMessage(null);
+    }, 5000);
+  };
+
+  const handleCloseDetailsModal = () => {
+    setIsDetailsModalOpen(false);
+    setSelectedOrder(null);
+  };
+
   const filteredOrders = orders.filter(order => 
     order.poNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
     order.productId.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -186,6 +209,19 @@ const Orders = () => {
         </div>
       )}
       
+      {/* Success Messages */}
+      {deleteSuccessMessage && (
+        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-md">
+          <p className="text-green-600">{deleteSuccessMessage}</p>
+        </div>
+      )}
+
+      {updateSuccessMessage && (
+        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-md">
+          <p className="text-green-600">{updateSuccessMessage}</p>
+        </div>
+      )}
+      
       {/* Search bar */}
       <div className="mb-6 max-w-lg">
         <div className="relative">
@@ -201,12 +237,6 @@ const Orders = () => {
           />
         </div>
       </div>
-
-      {deleteSuccessMessage && (
-        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-md">
-          <p className="text-green-600">{deleteSuccessMessage}</p>
-        </div>
-      )}
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
@@ -232,7 +262,10 @@ const Orders = () => {
               ) : (
                 filteredOrders.map((order) => (
                   <React.Fragment key={order._id}>
-                    <tr className="hover:bg-gray-50">
+                    <tr 
+                      className="hover:bg-gray-50 cursor-pointer"
+                      onClick={() => canEditOrders ? handleViewOrderDetails(order) : null}
+                    >
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{order.poNo}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{order.productId.itemName}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{order.productId.styleNo}</td>
@@ -241,7 +274,11 @@ const Orders = () => {
                         {canUpdateStatus ? (
                           <select
                             value={order.status}
-                            onChange={(e) => handleStatusChange(order._id, e.target.value)}
+                            onChange={(e) => {
+                              e.stopPropagation(); // Prevent row click event
+                              handleStatusChange(order._id, e.target.value);
+                            }}
+                            onClick={(e) => e.stopPropagation()} // Prevent row click event
                             className={`rounded-full text-xs font-medium px-2.5 py-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
                               ${order.status.toLowerCase() === 'pending' ? 'bg-yellow-100 text-yellow-800' : ''}
                               ${order.status.toLowerCase() === 'producing' ? 'bg-blue-100 text-blue-800' : ''}
@@ -271,7 +308,10 @@ const Orders = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         <div className="flex space-x-3">
                           <button
-                            onClick={() => toggleExpand(order._id)}
+                            onClick={(e) => {
+                              e.stopPropagation(); // Prevent row click event
+                              toggleExpand(order._id);
+                            }}
                             className="text-gray-600 hover:text-gray-900"
                             title="View Usage Details"
                           >
@@ -281,9 +321,23 @@ const Orders = () => {
                               <ChevronRightIcon className="h-5 w-5" />
                             )}
                           </button>
+                          {canEditOrders && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevent row click event
+                                handleViewOrderDetails(order);
+                              }}
+                              className="text-blue-600 hover:text-blue-900"
+                              title="Edit Order"
+                            >
+                            </button>
+                          )}
                           {canDeleteOrders && (
                             <button
-                              onClick={() => handleDeleteOrder(order)}
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevent row click event
+                                handleDeleteOrder(order);
+                              }}
                               className="text-red-600 hover:text-red-900"
                               title="Delete Order"
                             >
@@ -294,7 +348,7 @@ const Orders = () => {
                       </td>
                     </tr>
                     {expandedOrderId === order._id && (
-                      <tr>
+                      <tr onClick={(e) => e.stopPropagation()}>
                         <td colSpan={7} className="px-8 pb-6 pt-0">
                           <div className="bg-gray-50 rounded-lg p-6 mt-2 mb-2 shadow-inner">
                             <h3 className="text-md font-semibold text-gray-800 mb-4">Material Usage Details</h3>
@@ -306,16 +360,15 @@ const Orders = () => {
                                   <thead className="bg-gray-100">
                                     <tr>
                                       <th className="px-2 py-1 text-xs font-semibold text-gray-600">Material Name</th>
-                                      <th className="px-2 py-1 text-xs font-semibold text-gray-600">Item Code</th>
-                                      <th className="px-2 py-1 text-xs font-semibold text-gray-600">Required Qty</th>
-                                      <th className="px-2 py-1 text-xs font-semibold text-gray-600">Used Qty</th>
+                                      <th className="px-2 py-1 text-xs font-semibold text-gray-600">Material Code</th>
+                                      <th className="px-2 py-1 text-xs font-semibold text-gray-600">Standard Required Qty</th>
+                                      <th className="px-2 py-1 text-xs font-semibold text-gray-600">Product Wastage</th>
+                                      <th className="px-2 py-1 text-xs font-semibold text-gray-600">Order Wastage</th>
+                                      <th className="px-2 py-1 text-xs font-semibold text-gray-600">Total Wastage</th>
+                                      <th className="px-2 py-1 text-xs font-semibold text-gray-600">Total Required Qty</th>
                                       {order.status === 'PENDING' && (
                                         <th className="px-2 py-1 text-xs font-semibold text-gray-600">Current Stock</th>
                                       )}
-                                      <th className="px-2 py-1 text-xs font-semibold text-gray-600">Standard Wastage</th>
-                                      <th className="px-2 py-1 text-xs font-semibold text-gray-600">Extra Wastage</th>
-                                      <th className="px-2 py-1 text-xs font-semibold text-gray-600">Total Wastage</th>
-                                      <th className="px-2 py-1 text-xs font-semibold text-gray-600">Waste %</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -324,31 +377,28 @@ const Orders = () => {
                                         <td className="px-2 py-1 text-xs text-gray-700">{material.materialName}</td>
                                         <td className="px-2 py-1 text-xs text-gray-700">{material.itemCode}</td>
                                         <td className="px-2 py-1 text-xs text-gray-700">{material.requiredQty} {material.unit}</td>
-                                        <td className="px-2 py-1 text-xs text-gray-700">{material.actualUsedQty || material.requiredQty}</td>
+                                        <td className="px-2 py-1 text-xs text-gray-700">{material.standardWastage || 0} {material.unit}</td>
+                                        <td className="px-2 py-1 text-xs text-gray-700">{material.extraWastage || 0} {material.unit}</td>
+                                        <td className="px-2 py-1 text-xs text-red-700">
+                                          {((material.standardWastage || 0) + (material.extraWastage || 0))} {material.unit} ({material.wastePercentage || ((material.standardWastage || 0) + (material.extraWastage || 0)) > 0 ?
+                                            `${((((material.standardWastage || 0) + (material.extraWastage || 0)) / (material.actualUsedQty || material.requiredQty)) * 100).toFixed(2)}%` :
+                                            '0.00%'})
+                                        </td>
+                                        <td className="px-2 py-1 text-xs text-blue-700 font-bold">{material.totalRequiredQty} {material.unit}</td>
                                         {order.status === 'PENDING' && (
                                           <td
                                             className={`px-2 py-1 text-xs ${
                                               material.currentStock < material.requiredQty
                                               ? 'text-red-600 font-bold'
-                                              : (material.requiredQty / material.currentStock) * 100 > 80
+                                              : (material.totalRequiredQty / material.currentStock) * 100 > 80
                                               ? 'text-yellow-600 font-bold'
                                               : 'text-green-600 font-bold'
                                             }`}
                                           >
-                                            {material.currentStock} ({material.currentStock - material.requiredQty})
+                                            {material.currentStock} {material.unit} [in stock]
+                                            ({material.currentStock - material.totalRequiredQty} {material.unit} [left])
                                           </td>
                                         )}
-                                        <td className="px-2 py-1 text-xs text-gray-700">{material.standardWastage || 0}</td>
-                                        <td className="px-2 py-1 text-xs text-gray-700 font-medium text-red-600">{material.extraWastage || 0}</td>
-                                        <td className="px-2 py-1 text-xs text-gray-700">
-                                          {((material.standardWastage || 0) + (material.extraWastage || 0)).toFixed(2)}
-                                        </td>
-                                        <td className="px-2 py-1 text-xs text-gray-700">
-                                          {material.wastePercentage || ((material.standardWastage || 0) + (material.extraWastage || 0)) > 0 ?
-                                            `${((((material.standardWastage || 0) + (material.extraWastage || 0)) / (material.actualUsedQty || material.requiredQty)) * 100).toFixed(2)}%` :
-                                            '0.00%'
-                                          }
-                                        </td>
                                       </tr>
                                     ))}
                                   </tbody>
@@ -380,6 +430,14 @@ const Orders = () => {
         isOpen={isDeleteModalOpen}
         onClose={handleCloseDeleteModal}
         onSuccess={handleDeleteSuccess}
+        order={selectedOrder}
+      />
+
+      {/* Order Details Modal */}
+      <OrderDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={handleCloseDetailsModal}
+        onSuccess={handleOrderUpdateSuccess}
         order={selectedOrder}
       />
     </div>

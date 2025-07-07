@@ -37,20 +37,17 @@ exports.getOrderById = async (req, res) => {
 // Create new order
 exports.createOrder = async (req, res) => {
   try {
-    const { poNo, productId, quantity } = req.body;
+    const { productId, quantity, description, orderDate } = req.body;
     
     // Validate inputs
-    if (!poNo || !productId || !quantity || quantity <= 0) {
+    if (!productId || !quantity || quantity <= 0) {
       return res.status(400).json({ 
-        message: 'PO number, product ID, and valid quantity are required'
+        message: 'product ID, and valid quantity are required'
       });
     }
     
-    // Check if order with same PO number exists
-    const existingOrder = await Order.findOne({ poNo });
-    if (existingOrder) {
-      return res.status(400).json({ message: 'Order with this PO number already exists' });
-    }
+    const orderCount = await Order.countDocuments();
+    const poNo = `PO${(orderCount + 1).toString().padStart(4, '0')}`;
     
     // Check if product exists
     const product = await Product.findById(productId).populate('materialsRequired.materialId');
@@ -64,7 +61,7 @@ exports.createOrder = async (req, res) => {
       const requiredQty = material.quantityPerPiece * quantity;
       
       // Calculate standard wastage based on the expected wastage percentage
-      const standardWastage = (requiredQty * (material.expectedWastagePercentage || 0)) / 100;
+      const standardWastage = parseFloat(((requiredQty * (material.expectedWastagePercentage || 0)) / 100).toFixed(4));
       
       // Add material name and item code if available
       let materialName = '';
@@ -85,11 +82,12 @@ exports.createOrder = async (req, res) => {
         itemCode,
         unit,
         requiredQty,
-        actualUsedQty: 0,
+        actualUsedQty: parseFloat((requiredQty + standardWastage).toFixed(4)),
         standardWastage,
         extraWastage: 0,
         wastage: standardWastage, // Initial wastage is just the standard wastage
-        wastePercentage: standardWastage > 0 ? ((standardWastage / requiredQty) * 100).toFixed(2) : '0.00'
+        totalRequiredQty: parseFloat((requiredQty + standardWastage).toFixed(4)), // Add this line
+        wastePercentage: standardWastage > 0 ? ((standardWastage / requiredQty) * 100).toFixed(2) : '0.00',
       };
     });
     
@@ -97,7 +95,8 @@ exports.createOrder = async (req, res) => {
       poNo,
       productId,
       quantity,
-      orderDate: new Date(),
+      description, // Add the description field
+      orderDate: orderDate ? new Date(orderDate) : new Date(), // Use provided orderDate if available
       status: 'PENDING',
       consumptionReport
     });
@@ -221,6 +220,7 @@ exports.getOrderUsage = async (req, res) => {
         standardWastage: material.standardWastage || 0,
         extraWastage: material.extraWastage || 0,
         wastage: material.wastage || 0,
+        totalRequiredQty: material.totalRequiredQty || (material.requiredQty + material.wastage) || 0, // Add this line
         wastePercentage: material.wastePercentage || '0.00',
         wastageHistory: materialWastageHistory
       };
@@ -281,4 +281,97 @@ exports.deleteOrder = async (req, res) => {
   } finally {
     session.endSession();
   }
-}; 
+};
+
+// Update order details
+exports.updateOrderDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { description, orderDate, quantity } = req.body;
+    
+    // Validate inputs
+    if (quantity && quantity <= 0) {
+      return res.status(400).json({ 
+        message: 'Quantity must be greater than 0'
+      });
+    }
+    
+    // Find the order
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+    
+    // Update only the fields that are provided
+    if (description !== undefined) {
+      order.description = description;
+    }
+    
+    if (orderDate) {
+      order.orderDate = new Date(orderDate);
+    }
+    
+    if (quantity) {
+      // Only allow quantity update if order is still in PENDING status
+      if (order.status !== 'PENDING') {
+        return res.status(400).json({ 
+          message: 'Cannot update quantity for orders that are already in production or completed'
+        });
+      }
+      
+      // Update quantity and recalculate consumption report
+      order.quantity = quantity;
+      
+      // Get the product to recalculate material requirements
+      const product = await Product.findById(order.productId).populate('materialsRequired.materialId');
+      
+      if (product) {
+        // Recalculate consumption report based on new quantity
+        order.consumptionReport = product.materialsRequired.map(material => {
+          // Calculate required quantity based on new product quantity
+          const requiredQty = material.quantityPerPiece * quantity;
+          
+          // Calculate standard wastage based on the expected wastage percentage
+          const standardWastage = parseFloat(((requiredQty * (material.expectedWastagePercentage || 0)) / 100).toFixed(4));
+          
+          // Find existing consumption report item if it exists
+          const existingItem = order.consumptionReport.find(
+            item => item.materialId.toString() === material.materialId._id.toString()
+          );
+          
+          // Add material name and item code if available
+          let materialName = '';
+          let itemCode = '';
+          let unit = '';
+          
+          if (material.materialId) {
+            if (typeof material.materialId === 'object') {
+              materialName = material.materialId.name || '';
+              itemCode = material.materialId.itemCode || '';
+              unit = material.materialId.unit || '';
+            }
+          }
+          
+          return {
+            materialId: material.materialId,
+            materialName: materialName || (existingItem ? existingItem.materialName : ''),
+            itemCode: itemCode || (existingItem ? existingItem.itemCode : ''),
+            unit: unit || (existingItem ? existingItem.unit : ''),
+            requiredQty,
+            actualUsedQty: parseFloat((requiredQty + standardWastage).toFixed(4)),
+            standardWastage,
+            extraWastage: existingItem ? existingItem.extraWastage : 0,
+            wastage: standardWastage + (existingItem ? existingItem.extraWastage : 0),
+            totalRequiredQty: parseFloat((requiredQty + standardWastage + (existingItem ? existingItem.extraWastage : 0)).toFixed(4)),
+            wastePercentage: standardWastage > 0 ? ((standardWastage / requiredQty) * 100).toFixed(2) : '0.00',
+          };
+        });
+      }
+    }
+    
+    await order.save();
+    res.status(200).json(order);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};

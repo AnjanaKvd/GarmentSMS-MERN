@@ -17,25 +17,26 @@ import {
 } from '@heroicons/react/24/outline';
 import { useSelector, useDispatch } from 'react-redux';
 import { logout } from '../redux/slices/authSlice';
-import { useEffect } from 'react';
+import { getUserFromToken } from '../redux/slices/authSlice';
+import logo from '../assets/logo-white.png';
+
 
 const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { user, isAuthenticated } = useSelector((state) => state.auth);
+  const { token, isAuthenticated } = useSelector((state) => state.auth);
+  
+  // Get user from token
+  const user = getUserFromToken(token);
   
   // Debug user role and auth state
-  console.log('User in DashboardLayout:', user);
-  console.log('Is authenticated:', isAuthenticated);
   
   // Define role-based permissions
   const isAdmin = user?.role === 'ADMIN';
   const isManagerOrAdmin = ['ADMIN', 'MANAGER'].includes(user?.role);
   const isProductionOrHigher = ['ADMIN', 'MANAGER', 'PRODUCTION'].includes(user?.role);
   const isViewer = user?.role === 'VIEWER';
-
-  console.log('Role checks:', { isAdmin, isManagerOrAdmin, isProductionOrHigher, isViewer });
 
   // Define navigation items with role-based access control
   const navigation = [
@@ -48,8 +49,6 @@ const DashboardLayout = () => {
     { name: 'Users', href: '/users', icon: UserIcon, allowed: isAdmin },
   ];
 
-  console.log('Navigation items after definition:', navigation);
-  console.log('Filtered navigation items:', navigation.filter(item => item.allowed));
 
   const handleLogout = () => {
     // Dispatch logout action
@@ -98,7 +97,11 @@ const DashboardLayout = () => {
           </div>
 
           <div className="flex-shrink-0 flex items-center px-4">
-            <span className="text-xl font-bold text-white">GSMS</span>
+          <img
+            className="mx-auto pt-2 h-12 w-auto"
+            src={logo}
+            alt="GSMS Logo"
+          />
           </div>
           <div className="mt-5 flex-1 h-0 overflow-y-auto">
             <nav className="px-2 space-y-1">
@@ -127,7 +130,11 @@ const DashboardLayout = () => {
         <div className="flex flex-col w-64">
           <div className="flex flex-col h-0 flex-1">
             <div className="flex items-center h-16 flex-shrink-0 px-4 bg-gray-800">
-              <span className="text-xl font-bold text-white">GSMS</span>
+            <img
+            className="mx-auto pt-2 h-12 w-auto"
+            src={logo}
+            alt="GSMS Logo"
+          />
             </div>
             <div className="flex-1 flex flex-col overflow-y-auto">
               <nav className="flex-1 px-2 py-4 bg-gray-800 space-y-1">

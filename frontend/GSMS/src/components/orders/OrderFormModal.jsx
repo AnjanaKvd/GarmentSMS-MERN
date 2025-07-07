@@ -3,9 +3,10 @@ import api from '../../services/api';
 
 const OrderFormModal = ({ isOpen, onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
-    poNo: '',
     productId: '',
-    quantity: ''
+    quantity: '',
+    description: '',
+    orderDate: new Date().toISOString().split('T')[0] // Default to today's date in YYYY-MM-DD format
   });
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -43,7 +44,12 @@ const OrderFormModal = ({ isOpen, onClose, onSuccess }) => {
       await api.post('/orders', formData);
       onSuccess();
       onClose();
-      setFormData({ poNo: '', productId: '', quantity: '' });
+      setFormData({ 
+        productId: '', 
+        quantity: '',
+        description: '',
+        orderDate: new Date().toISOString().split('T')[0]
+      });
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to create order');
     } finally {
@@ -87,21 +93,6 @@ const OrderFormModal = ({ isOpen, onClose, onSuccess }) => {
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  <div>
-                    <label htmlFor="poNo" className="block text-sm font-medium text-gray-700">
-                      Purchase Order Number
-                    </label>
-                    <input
-                      type="text"
-                      id="poNo"
-                      name="poNo"
-                      value={formData.poNo}
-                      onChange={handleChange}
-                      required
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                      placeholder="Enter PO number"
-                    />
-                  </div>
 
                   <div>
                     <label htmlFor="productId" className="block text-sm font-medium text-gray-700">
@@ -138,6 +129,36 @@ const OrderFormModal = ({ isOpen, onClose, onSuccess }) => {
                       min="1"
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                       placeholder="Enter quantity"
+                    />
+                  </div>
+
+                  {/* New fields for description and order date */}
+                  <div>
+                    <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                      Description (Optional)
+                    </label>
+                    <textarea
+                      id="description"
+                      name="description"
+                      value={formData.description}
+                      onChange={handleChange}
+                      rows="3"
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      placeholder="Enter order description"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="orderDate" className="block text-sm font-medium text-gray-700">
+                      Order Date
+                    </label>
+                    <input
+                      type="date"
+                      id="orderDate"
+                      name="orderDate"
+                      value={formData.orderDate}
+                      onChange={handleChange}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                     />
                   </div>
                 </form>

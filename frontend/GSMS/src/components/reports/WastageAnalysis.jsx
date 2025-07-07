@@ -185,7 +185,7 @@ const WastageAnalysis = () => {
                         const color = colors[idx % colors.length];
                         return (
                           <span key={`legend-${material.id}-${idx}`} className={color}>
-                            {reason.reason.substring(0, 8)}..
+                            {reason.reason.substring(0, 8)}...
                           </span>
                         );
                       })}
@@ -195,10 +195,90 @@ const WastageAnalysis = () => {
               </div>
             ))}
           </div>
+
+          {/* Order Wastage Section - New section based on API response */}
+          <h3 className="text-md font-medium text-gray-800 mt-8 mb-3">Wastage by Order</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {wastageAnalysis.map((material, index) => (
+              <div key={`order-${material.id || index}`} className="border rounded-lg p-4 bg-gray-50">
+                <h4 className="font-medium mb-2">{material.name} - {material.itemCode}</h4>
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-white">
+                    <tr>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">PO No</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Product</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Style No</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Usage</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Std Wastage</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Extra Wastage</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {material.orderWastage?.map((order, idx) => (
+                      <tr key={`${material.id}-order-${idx}`} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
+                        <td className="px-3 py-2 text-sm text-gray-900">{order.poNo}</td>
+                        <td className="px-3 py-2 text-sm text-gray-900">{order.productName}</td>
+                        <td className="px-3 py-2 text-sm text-gray-900">{order.styleNo}</td>
+                        <td className="px-3 py-2 text-sm text-gray-900">{order.usage.toFixed(2)} {material.unit}</td>
+                        <td className="px-3 py-2 text-sm text-gray-900">{order.standardWastage.toFixed(2)} {material.unit}</td>
+                        <td className="px-3 py-2 text-sm text-gray-900">{order.extraWastage.toFixed(2)} {material.unit}</td>
+                        <td className="px-3 py-2 text-sm text-gray-900">
+                          {order.totalWastage.toFixed(2)} {material.unit}
+                          {order.wastagePercentage > 0 && (
+                            <span className="text-xs text-gray-500 ml-1">({order.wastagePercentage}%)</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+          </div>
+
+          {/* Date Wastage Section - New section based on API response */}
+          <h3 className="text-md font-medium text-gray-800 mt-8 mb-3">Wastage by Date</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {wastageAnalysis.map((material, index) => (
+              <div key={`date-${material.id || index}`} className="border rounded-lg p-4 bg-gray-50">
+                <h4 className="font-medium mb-2">{material.name} - {material.itemCode}</h4>
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-white">
+                    <tr>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Date</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Usage</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Std Wastage</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Extra Wastage</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {material.dateWastage?.map((entry, idx) => (
+                      <tr key={`${material.id}-date-${idx}`} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-100'}>
+                        <td className="px-3 py-2 text-sm text-gray-900">
+                          {new Date(entry.date).toLocaleDateString()}
+                        </td>
+                        <td className="px-3 py-2 text-sm text-gray-900">{entry.usage.toFixed(2)} {material.unit}</td>
+                        <td className="px-3 py-2 text-sm text-gray-900">{entry.standardWastage.toFixed(2)} {material.unit}</td>
+                        <td className="px-3 py-2 text-sm text-gray-900">{entry.extraWastage.toFixed(2)} {material.unit}</td>
+                        <td className="px-3 py-2 text-sm text-gray-900">
+                          {entry.totalWastage.toFixed(2)} {material.unit}
+                          {entry.wastagePercentage > 0 && (
+                            <span className="text-xs text-gray-500 ml-1">({entry.wastagePercentage}%)</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
   );
 };
 
-export default WastageAnalysis; 
+export default WastageAnalysis;

@@ -36,7 +36,6 @@ export const fetchMaterialById = createAsyncThunk(
       if (!id || id === 'undefined') {
         return rejectWithValue('Invalid material ID');
       }
-      console.log("Fetching material with ID:", id);
       const response = await api.get(`/materials/${id}`);
       
       // Add id property if only _id exists
@@ -46,7 +45,6 @@ export const fetchMaterialById = createAsyncThunk(
       
       return response.data;
     } catch (error) {
-      console.error("Error fetching material:", error);
       return rejectWithValue(
         error.response?.data?.message || 'Failed to fetch material details'
       );
@@ -77,7 +75,6 @@ export const updateMaterial = createAsyncThunk(
       if (!id || id === 'undefined') {
         return rejectWithValue('Invalid material ID');
       }
-      console.log("Updating material with ID:", id);
       const response = await api.put(`/materials/${id}`, materialData);
       return response.data;
     } catch (error) {
@@ -96,8 +93,15 @@ export const receiveMaterialStock = createAsyncThunk(
       if (!id || id === 'undefined') {
         return rejectWithValue('Invalid material ID');
       }
-      console.log("Receiving stock for material with ID:", id);
-      const response = await api.post(`/materials/${id}/receive`, stockData);
+      
+      // Prepare the data for the API
+      const apiData = {
+        quantity: stockData.quantity,
+        date: stockData.date,
+        remarks: stockData.remarks || ''
+      };
+      
+      const response = await api.post(`/materials/${id}/receive`, apiData);
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -120,6 +124,27 @@ export const deleteMaterial = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.message || 'Failed to delete material'
+      );
+    }
+  }
+);
+
+// Add this after the deleteMaterial thunk
+
+// Delete stock record
+export const deleteStockRecord = createAsyncThunk(
+  'materials/deleteStockRecord',
+  async ({ materialId, batchId }, { rejectWithValue }) => {
+    try {
+      if (!materialId || materialId === 'undefined' || !batchId) {
+        return rejectWithValue('Invalid material ID or batch ID');
+      }
+      
+      const response = await api.delete(`/materials/${materialId}/stock-records/${batchId}`);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to delete stock record'
       );
     }
   }
@@ -252,6 +277,29 @@ const materialsSlice = createSlice({
         );
       })
       .addCase(deleteMaterial.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+      
+      // Delete stock record
+      .addCase(deleteStockRecord.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(deleteStockRecord.fulfilled, (state, action) => {
+        state.isLoading = false;
+        // Update the current material with the returned data
+        state.currentMaterial = action.payload.material;
+        
+        // Also update the material in the materials array if it exists
+        const index = state.materials.findIndex(
+          (material) => (material.id || material._id) === (action.payload.material.id || action.payload.material._id)
+        );
+        if (index !== -1) {
+          state.materials[index] = action.payload.material;
+        }
+      })
+      .addCase(deleteStockRecord.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       });

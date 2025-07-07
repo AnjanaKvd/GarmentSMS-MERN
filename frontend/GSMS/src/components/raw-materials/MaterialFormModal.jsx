@@ -13,36 +13,35 @@ const MaterialFormModal = ({ onClose, isEdit = false, material = null }) => {
  
   const { register, handleSubmit, reset, formState: { errors } } = useForm({
     defaultValues: isEdit && material ? {
-      itemCode: material.itemCode,
       name: material.name,
       unit: material.unit,
-      currentStock: material.currentStock,
       description: material.description || '',
-    } : {}
+    } : {
+      currentStock: '0' // Default value for new materials
+    }
   });
 
   useEffect(() => {
     // Only validate material if in edit mode
     if (isEdit && (!material || (!material.id && !material._id))) {
-      console.error("Invalid material object for editing", material);
       onClose(); // Close the modal if material is invalid in edit mode
     }
     
     // Set form values if editing
     if (isEdit && material) {
       reset({
-        itemCode: material.itemCode,
         name: material.name,
         unit: material.unit,
-        currentStock: material.currentStock,
         description: material.description || '',
       });
     }
   }, [isEdit, material, reset, onClose]);
 
   const onSubmit = async (data) => {
-    // Convert currentStock to number
-    data.currentStock = parseFloat(data.currentStock);
+    // Convert currentStock to number if provided
+    if (data.currentStock) {
+      data.currentStock = parseFloat(data.currentStock);
+    }
     
     try {
       if (isEdit) {
@@ -51,14 +50,14 @@ const MaterialFormModal = ({ onClose, isEdit = false, material = null }) => {
         await dispatch(updateMaterial({ id: materialId, materialData: data })).unwrap();
         onClose();
         showNotification(
-          `Material ${data.name} (${data.itemCode}) updated successfully`,
+          `Material ${data.name} updated successfully`,
           'success'
         );
       } else {
         const result = await dispatch(createMaterial(data)).unwrap();
         onClose();
         showNotification(
-          `Material ${data.name} (${data.itemCode}) created successfully`,
+          `Material ${result.name} (${result.itemCode}) created successfully`,
           'success'
         );
       }
@@ -67,7 +66,6 @@ const MaterialFormModal = ({ onClose, isEdit = false, material = null }) => {
         `Failed to ${isEdit ? 'update' : 'create'} material: ${error.message || 'Unknown error'}`,
         'error'
       );
-      console.error(`Failed to ${isEdit ? 'update' : 'create'} material:`, error);
     }
   };
 
@@ -89,22 +87,6 @@ const MaterialFormModal = ({ onClose, isEdit = false, material = null }) => {
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-4">
-            <div>
-              <label htmlFor="itemCode" className="block text-sm font-medium text-gray-700">
-                Item Code *
-              </label>
-              <input
-                type="text"
-                id="itemCode"
-                {...register('itemCode', { required: 'Item code is required' })}
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                disabled={isEdit} // Don't allow editing item code
-              />
-              {errors.itemCode && (
-                <p className="mt-2 text-sm text-red-600">{errors.itemCode.message}</p>
-              )}
-            </div>
-
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700">
                 Material Name *
@@ -143,32 +125,32 @@ const MaterialFormModal = ({ onClose, isEdit = false, material = null }) => {
               )}
             </div>
 
-            <div>
-              <label htmlFor="currentStock" className="block text-sm font-medium text-gray-700">
-                Current Stock *
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                id="currentStock"
-                {...register('currentStock', { 
-                  required: 'Current stock is required',
-                  min: { 
-                    value: 0, 
-                    message: 'Stock cannot be negative' 
-                  }
-                })}
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                disabled={isEdit} // Can't directly edit current stock for existing materials
-              />
-              {errors.currentStock && (
-                <p className="mt-2 text-sm text-red-600">{errors.currentStock.message}</p>
-              )}
-            </div>
+            {!isEdit && (
+              <div>
+                <label htmlFor="currentStock" className="block text-sm font-medium text-gray-700">
+                  Initial Stock (Optional)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  id="currentStock"
+                  {...register('currentStock', { 
+                    min: { 
+                      value: 0, 
+                      message: 'Stock cannot be negative' 
+                    }
+                  })}
+                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                />
+                {errors.currentStock && (
+                  <p className="mt-2 text-sm text-red-600">{errors.currentStock.message}</p>
+                )}
+              </div>
+            )}
 
             <div>
               <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                Description (optional)
+                Description (Optional)
               </label>
               <textarea
                 id="description"

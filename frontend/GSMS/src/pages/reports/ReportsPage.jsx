@@ -4,10 +4,12 @@ import FabricUsageSummary from '../../components/reports/FabricUsageSummary';
 import StockBalanceReport from '../../components/reports/StockBalanceReport';
 import OrderFulfillmentStatus from '../../components/reports/OrderFulfillmentStatus';
 import WastageAnalysis from '../../components/reports/WastageAnalysis';
+import { getUserFromToken } from '../../redux/slices/authSlice';
 
 const ReportsPage = () => {
   const [activeTab, setActiveTab] = useState('fabricUsage');
-  const { user } = useSelector((state) => state.auth);
+  const { token } = useSelector((state) => state.auth);
+const user = getUserFromToken(token);;
   
   // Define role-based permissions
   const isAdmin = user?.role === 'ADMIN';

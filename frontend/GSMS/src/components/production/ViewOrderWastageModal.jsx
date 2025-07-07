@@ -25,7 +25,6 @@ const ViewOrderWastageModal = ({ isOpen, onClose, order }) => {
       
       setLoading(false);
     } catch (err) {
-      console.error('Error fetching order usage data:', err);
       setError('Failed to load order wastage details');
       setLoading(false);
     }

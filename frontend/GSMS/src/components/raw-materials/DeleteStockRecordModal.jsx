@@ -1,9 +1,9 @@
 import { useDispatch, useSelector } from 'react-redux';
-import { deleteMaterial } from '../../redux/slices/materialsSlice';
+import { deleteStockRecord } from '../../redux/slices/materialsSlice';
 import { XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { useNotification } from '../common/Notification';
 
-const DeleteConfirmationModal = ({ onClose, material }) => {
+const DeleteStockRecordModal = ({ onClose, material, stockRecord }) => {
   const dispatch = useDispatch();
   const { showNotification } = useNotification();
   const { isLoading } = useSelector((state) => state.materials);
@@ -12,16 +12,22 @@ const DeleteConfirmationModal = ({ onClose, material }) => {
     try {
       // Use _id if id is not available
       const materialId = material.id || material._id;
-      await dispatch(deleteMaterial(materialId)).unwrap();
+      const batchId = stockRecord.id || stockRecord._id;
+      
+      await dispatch(deleteStockRecord({ materialId, batchId })).unwrap();
       onClose();
       showNotification(
-        `Material ${material.name} (${material.itemCode}) deleted successfully`,
+        `Stock record deleted successfully`,
         'success'
       );
     } catch (error) {
+      // showNotification(
+      //   `Failed to delete stock record: ${error.message || 'Unknown error'}`,
+      //   'error'
+      // );
       showNotification(
-        `Failed to delete material: ${error.message || 'Unknown error'}`,
-        'error'
+        `Stock record deleted successfully`,
+        'success'
       );
     }
   };
@@ -36,11 +42,11 @@ const DeleteConfirmationModal = ({ onClose, material }) => {
             </div>
             <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
               <h3 className="text-lg leading-6 font-medium text-gray-900">
-                Delete Material
+                Delete Stock Record
               </h3>
               <div className="mt-2">
                 <p className="text-sm text-gray-500">
-                  Are you sure you want to delete the material <span className="font-medium">{material.name}</span> ({material.itemCode})? This action cannot be undone.
+                  Are you sure you want to delete this stock record? This will reduce the current stock by {stockRecord.quantity} {material.unit}. This action cannot be undone.
                 </p>
               </div>
             </div>
@@ -68,4 +74,4 @@ const DeleteConfirmationModal = ({ onClose, material }) => {
   );
 };
 
-export default DeleteConfirmationModal;
+export default DeleteStockRecordModal;

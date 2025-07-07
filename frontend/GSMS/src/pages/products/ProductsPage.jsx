@@ -4,11 +4,13 @@ import { fetchProducts } from '../../redux/slices/productsSlice';
 import ProductFormModal from '../../components/products/ProductFormModal';
 import DeleteProductModal from '../../components/products/DeleteProductModal';
 import { Link } from 'react-router-dom';
+import { getUserFromToken } from '../../redux/slices/authSlice';
 
 const ProductsPage = () => {
   const dispatch = useDispatch();
   const { products, isLoading, error } = useSelector((state) => state.products);
-  const { user } = useSelector((state) => state.auth);
+  const { token } = useSelector((state) => state.auth);
+const user = getUserFromToken(token);;
   
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);

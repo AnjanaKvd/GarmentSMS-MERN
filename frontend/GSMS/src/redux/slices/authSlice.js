@@ -13,7 +13,8 @@ export const login = createAsyncThunk(
       // Store token in localStorage
       localStorage.setItem('token', response.data.token);
       
-      return response.data;
+      // Return only the token, not the user object
+      return { token: response.data.token };
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.message || 'Failed to login'
@@ -28,6 +29,20 @@ export const logout = createAsyncThunk('auth/logout', async () => {
   return null;
 });
 
+// Get user info from token
+export const getUserFromToken = (token) => {
+  try {
+    const decoded = jwtDecode(token);
+    return {
+      id: decoded.userId,
+      username: decoded.username,
+      role: decoded.role
+    };
+  } catch (error) {
+    return null;
+  }
+};
+
 // New thunk to get current user info from token
 export const getCurrentUser = createAsyncThunk(
   'auth/getCurrentUser',
@@ -39,7 +54,7 @@ export const getCurrentUser = createAsyncThunk(
         return rejectWithValue('No token found');
       }
       
-      // Option 1: Decode the token to get user info
+      // Decode the token to get user info
       const decoded = jwtDecode(token);
       
       // Check if token is expired
@@ -49,19 +64,8 @@ export const getCurrentUser = createAsyncThunk(
         return rejectWithValue('Token expired');
       }
       
-      // If you need to verify the token with the backend
-      // Uncomment this and use instead of the decoded user
-      // const response = await api.get('/auth/me');
-      // return { user: response.data, token };
-      
-      return { 
-        user: {
-          id: decoded.id || decoded.userId || decoded.sub,
-          username: decoded.username,
-          role: decoded.role
-        }, 
-        token 
-      };
+      // Return only the token
+      return { token };
     } catch (error) {
       localStorage.removeItem('token');
       return rejectWithValue('Invalid token');
@@ -73,7 +77,6 @@ export const getCurrentUser = createAsyncThunk(
 const token = localStorage.getItem('token');
 
 const initialState = {
-  user: null,
   token: token || null,
   isAuthenticated: !!token,
   isLoading: false,
@@ -98,7 +101,6 @@ const authSlice = createSlice({
       .addCase(login.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isAuthenticated = true;
-        state.user = action.payload.user;
         state.token = action.payload.token;
       })
       .addCase(login.rejected, (state, action) => {
@@ -107,7 +109,6 @@ const authSlice = createSlice({
       })
       // Logout cases
       .addCase(logout.fulfilled, (state) => {
-        state.user = null;
         state.token = null;
         state.isAuthenticated = false;
       })
@@ -118,13 +119,11 @@ const authSlice = createSlice({
       .addCase(getCurrentUser.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isAuthenticated = true;
-        state.user = action.payload.user;
         state.token = action.payload.token;
       })
       .addCase(getCurrentUser.rejected, (state) => {
         state.isLoading = false;
         state.isAuthenticated = false;
-        state.user = null;
         state.token = null;
       });
   },

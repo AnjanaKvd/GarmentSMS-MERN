@@ -104,11 +104,14 @@ exports.recordProduction = async (req, res) => {
       );
       
       if (reportEntry) {
+        // Update actualUsedQty with just the used quantity (without wastage)
         reportEntry.actualUsedQty = (reportEntry.actualUsedQty || 0) + material.usedQty;
         reportEntry.standardWastage = (reportEntry.standardWastage || 0) + material.standardWastage;
         reportEntry.extraWastage = (reportEntry.extraWastage || 0) + material.extraWastage;
         reportEntry.wastage = reportEntry.standardWastage + reportEntry.extraWastage;
-        reportEntry.wastePercentage = ((reportEntry.wastage / reportEntry.actualUsedQty) * 100).toFixed(2);
+        // Update totalRequiredQty with all components (required + all wastage)
+        reportEntry.totalRequiredQty = reportEntry.requiredQty + reportEntry.wastage;
+        reportEntry.wastePercentage = ((reportEntry.wastage / reportEntry.requiredQty) * 100).toFixed(2);
       }
     }
     
@@ -187,6 +190,8 @@ exports.addExtraWastage = async (req, res) => {
       if (reportEntry) {
         reportEntry.extraWastage = (reportEntry.extraWastage || 0) + material.extraWastage;
         reportEntry.wastage = (reportEntry.standardWastage || 0) + reportEntry.extraWastage;
+        // Update totalRequiredQty to include the new extra wastage
+        reportEntry.totalRequiredQty = reportEntry.requiredQty + reportEntry.wastage;
         reportEntry.wastePercentage = ((reportEntry.wastage / reportEntry.requiredQty) * 100).toFixed(2);
       }
     }
@@ -314,8 +319,12 @@ exports.deleteProductionLog = async (req, res) => {
           reportEntry.standardWastage -= (material.standardWastage || 0);
           reportEntry.extraWastage -= (material.extraWastage || 0);
           reportEntry.wastage = reportEntry.standardWastage + reportEntry.extraWastage;
-          reportEntry.wastePercentage = reportEntry.actualUsedQty ? 
-            ((reportEntry.wastage / reportEntry.actualUsedQty) * 100).toFixed(2) : '0.00';
+          
+          // Update totalRequiredQty when deleting wastage
+          reportEntry.totalRequiredQty = reportEntry.requiredQty + reportEntry.wastage;
+          
+          reportEntry.wastePercentage = reportEntry.requiredQty > 0 ? 
+            ((reportEntry.wastage / reportEntry.requiredQty) * 100).toFixed(2) : '0.00';
         }
       }
       

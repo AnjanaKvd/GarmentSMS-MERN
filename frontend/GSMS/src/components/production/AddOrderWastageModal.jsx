@@ -46,7 +46,6 @@ const AddOrderWastageModal = ({ isOpen, onClose, onSuccess, order }) => {
       
       setLoading(false);
     } catch (err) {
-      console.error('Error fetching order usage data:', err);
       setError('Failed to load order materials');
       setLoading(false);
     }

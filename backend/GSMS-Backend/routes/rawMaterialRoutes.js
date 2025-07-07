@@ -26,6 +26,13 @@ router.post(
   rawMaterialController.addStockBatch
 );
 
+// Remove stock batch (Admin and Manager only)
+router.delete(
+  '/:id/stock-records/:batchId',
+  checkRole(['ADMIN', 'MANAGER']),
+  rawMaterialController.removeStockBatch
+)
+
 // Update material (Admin and Manager only)
 router.put(
   '/:id',

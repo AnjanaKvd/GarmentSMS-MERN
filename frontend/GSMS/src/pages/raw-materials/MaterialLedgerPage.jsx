@@ -2,25 +2,34 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchMaterialById, clearMaterialError } from '../../redux/slices/materialsSlice';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, TrashIcon } from '@heroicons/react/24/outline';
+import DeleteStockRecordModal from '../../components/raw-materials/DeleteStockRecordModal';
+import { getUserFromToken } from '../../redux/slices/authSlice';
 
 const MaterialLedgerPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { currentMaterial, isLoading, error } = useSelector((state) => state.materials);
+  const { token } = useSelector((state) => state.auth);
+  const user = getUserFromToken(token);
+  
+  // Define role-based permissions
+  const canDeleteStockRecord = ['ADMIN', 'MANAGER'].includes(user?.role);
+  
+  // Add state for delete modal
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedStockRecord, setSelectedStockRecord] = useState(null);
   
   // Add a key-based refresh mechanism
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Update the useEffect to include the refreshKey dependency
   useEffect(() => {
-    console.log("Material ID from params:", id);
     
     if (id && id !== 'undefined') {
       dispatch(fetchMaterialById(id));
     } else {
-      console.error("Invalid material ID");
       navigate('/raw-materials');
     }
 
@@ -36,6 +45,37 @@ const MaterialLedgerPage = () => {
 
   const goBack = () => {
     navigate('/raw-materials');
+  };
+  
+  // Handle delete stock record
+  const handleDeleteStockRecord = (stockRecord) => {
+    setSelectedStockRecord(stockRecord);
+    setShowDeleteModal(true);
+  };
+  
+  // Handle modal close
+  const handleModalClose = () => {
+    setShowDeleteModal(false);
+    setSelectedStockRecord(null);
+    // Refresh the material data
+    handleRefresh();
+  };
+
+  // Function to determine the status of a stock record
+  const getStockRecordStatus = (receivedDate) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to beginning of day for comparison
+    
+    const recordDate = new Date(receivedDate);
+    recordDate.setHours(0, 0, 0, 0); // Set to beginning of day for comparison
+    
+    if (recordDate > today) {
+      return { text: 'PENDING', className: 'bg-yellow-100 text-yellow-800' };
+    } else if (recordDate.getTime() === today.getTime()) {
+      return { text: 'TODAY', className: 'bg-blue-100 text-blue-800' };
+    } else {
+      return { text: 'RECEIVED', className: 'bg-green-100 text-green-800' };
+    }
   };
 
   // Calculate balance for each transaction
@@ -120,58 +160,19 @@ const MaterialLedgerPage = () => {
                     {currentMaterial.name}
                   </dd>
                 </div>
-                <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                  <dt className="text-sm font-medium text-gray-500">Unit of measurement</dt>
-                  <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                    {currentMaterial.unit}
-                  </dd>
-                </div>
                 <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                   <dt className="text-sm font-medium text-gray-500">Current stock</dt>
                   <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
                     {currentMaterial.currentStock} {currentMaterial.unit}
                   </dd>
                 </div>
-                {currentMaterial.composition && (
-                  <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                    <dt className="text-sm font-medium text-gray-500">Composition</dt>
-                    <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                      {currentMaterial.composition}
-                    </dd>
-                  </div>
-                )}
-                {currentMaterial.width && (
-                  <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                    <dt className="text-sm font-medium text-gray-500">Width</dt>
-                    <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                      {currentMaterial.width}
-                    </dd>
-                  </div>
-                )}
-                {currentMaterial.color && (
-                  <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                    <dt className="text-sm font-medium text-gray-500">Color</dt>
-                    <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                      {currentMaterial.color}
-                    </dd>
-                  </div>
-                )}
-                {currentMaterial.gsm && (
-                  <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                    <dt className="text-sm font-medium text-gray-500">GSM</dt>
-                    <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                      {currentMaterial.gsm}
-                    </dd>
-                  </div>
-                )}
-                {currentMaterial.description && (
-                  <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                    <dt className="text-sm font-medium text-gray-500">Description</dt>
-                    <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                      {currentMaterial.description}
-                    </dd>
-                  </div>
-                )}
+                <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                  <dt className="text-sm font-medium text-gray-500">Description</dt>
+                  <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                    {currentMaterial.description || "-"}
+                  </dd>
+                </div>
+                {/* Keep other material details */}
                 <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                   <dt className="text-sm font-medium text-gray-500">Last updated</dt>
                   <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
@@ -195,7 +196,7 @@ const MaterialLedgerPage = () => {
                           Date & Time
                         </th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Transaction Type
+                          Status
                         </th>
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Quantity
@@ -203,34 +204,53 @@ const MaterialLedgerPage = () => {
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Remarks
                         </th>
+                        {canDeleteStockRecord && (
+                          <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                          </th>
+                        )}
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {ledgerWithBalance.length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
+                          <td colSpan={canDeleteStockRecord ? 5 : 4} className="px-6 py-4 text-center text-sm text-gray-500">
                             No transactions found for this material.
                           </td>
                         </tr>
                       ) : (
-                        ledgerWithBalance.map((transaction) => (
-                          <tr key={transaction.id || transaction._id}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {new Date(transaction.receivedDate).toLocaleString()}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                {transaction.type}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {transaction.quantity} {currentMaterial.unit}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {transaction.remarks || '-'}
-                            </td>
-                          </tr>
-                        ))
+                        ledgerWithBalance.map((transaction) => {
+                          const status = getStockRecordStatus(transaction.receivedDate);
+                          return (
+                            <tr key={transaction.id || transaction._id}>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {new Date(transaction.receivedDate).toLocaleString()}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${status.className}`}>
+                                  {status.text}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {transaction.quantity} {currentMaterial.unit}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {transaction.remarks || '-'}
+                              </td>
+                              {canDeleteStockRecord && (
+                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                  <button
+                                    onClick={() => handleDeleteStockRecord(transaction)}
+                                    className="text-red-600 hover:text-red-900"
+                                    title="Delete stock record"
+                                  >
+                                    <TrashIcon className="h-5 w-5" />
+                                  </button>
+                                </td>
+                              )}
+                            </tr>
+                          );
+                        })
                       )}
                     </tbody>
                   </table>
@@ -243,6 +263,15 @@ const MaterialLedgerPage = () => {
         <div className="text-center py-8">
           <p className="text-gray-500">Material not found</p>
         </div>
+      )}
+      
+      {/* Delete Stock Record Modal */}
+      {showDeleteModal && selectedStockRecord && currentMaterial && (
+        <DeleteStockRecordModal
+          onClose={handleModalClose}
+          material={currentMaterial}
+          stockRecord={selectedStockRecord}
+        />
       )}
     </div>
   );

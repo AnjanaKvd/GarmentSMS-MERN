@@ -12,9 +12,13 @@ const ReceiveStockModal = ({ onClose, material }) => {
   const { showNotification } = useNotification();
   const { isLoading } = useSelector((state) => state.materials);
   
+  // Get current date in YYYY-MM-DD format for default value
+  const today = new Date().toISOString().split('T')[0];
+  
   const { register, handleSubmit, formState: { errors } } = useForm({
     defaultValues: {
       quantity: '',
+      date: today,
       remarks: ''
     }
   });
@@ -22,7 +26,6 @@ const ReceiveStockModal = ({ onClose, material }) => {
   useEffect(() => {
     // Check if material has a valid ID
     if (!material || (!material.id && !material._id)) {
-      console.error("Invalid material object for receiving stock", material);
       onClose();
     }
   }, [material, onClose]);
@@ -30,6 +33,9 @@ const ReceiveStockModal = ({ onClose, material }) => {
   const onSubmit = async (data) => {
     try {
       data.quantity = parseFloat(data.quantity);
+      // Format the date to ISO string
+      data.date = new Date(data.date).toISOString();
+      
       // Use _id if id is not available (API compatibility)
       const materialId = material.id || material._id;
       await dispatch(receiveMaterialStock({ id: materialId, stockData: data })).unwrap();
@@ -52,7 +58,6 @@ const ReceiveStockModal = ({ onClose, material }) => {
         `Failed to receive stock: ${error.message || 'Unknown error'}`,
         'error'
       );
-      console.error('Failed to receive stock:', error);
     }
   };
 
@@ -107,13 +112,30 @@ const ReceiveStockModal = ({ onClose, material }) => {
             </div>
 
             <div>
+              <label htmlFor="date" className="block text-sm font-medium text-gray-700">
+                Date Received *
+              </label>
+              <input
+                type="date"
+                id="date"
+                {...register('date', { 
+                  required: 'Date is required'
+                })}
+                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              />
+              {errors.date && (
+                <p className="mt-2 text-sm text-red-600">{errors.date.message}</p>
+              )}
+            </div>
+
+            <div>
               <label htmlFor="remarks" className="block text-sm font-medium text-gray-700">
-                Remarks
+              Remarks
               </label>
               <textarea
                 id="remarks"
                 {...register('remarks')}
-                placeholder="e.g. New shipment from Supplier X, PO #12345"
+                placeholder="e.g. New shipment from Supplier X"
                 rows={3}
                 className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               />
