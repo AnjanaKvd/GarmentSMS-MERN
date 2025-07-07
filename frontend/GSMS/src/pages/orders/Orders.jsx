@@ -43,7 +43,6 @@ const Orders = () => {
               usage: usageResponse.data.usage
             };
           } catch (err) {
-            console.error(`Failed to fetch usage for order ${order._id}:`, err);
             return {
               ...order,
               usage: []

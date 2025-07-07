@@ -55,7 +55,6 @@ const user = getUserFromToken(token);;
       const response = await api.get(`/production/order/${orderId}`);
       setProductionLogs(response.data || []);
     } catch (err) {
-      console.error('Failed to fetch production logs:', err);
       setProductionLogs([]);
     }
   };
@@ -66,7 +65,6 @@ const user = getUserFromToken(token);;
       const response = await api.get(`/products/${productId}/wastage`);
       return response.data;
     } catch (err) {
-      console.error('Failed to fetch product wastage:', err);
       return null;
     }
   };

@@ -36,7 +36,6 @@ export const fetchMaterialById = createAsyncThunk(
       if (!id || id === 'undefined') {
         return rejectWithValue('Invalid material ID');
       }
-      console.log("Fetching material with ID:", id);
       const response = await api.get(`/materials/${id}`);
       
       // Add id property if only _id exists
@@ -46,7 +45,6 @@ export const fetchMaterialById = createAsyncThunk(
       
       return response.data;
     } catch (error) {
-      console.error("Error fetching material:", error);
       return rejectWithValue(
         error.response?.data?.message || 'Failed to fetch material details'
       );
@@ -77,7 +75,6 @@ export const updateMaterial = createAsyncThunk(
       if (!id || id === 'undefined') {
         return rejectWithValue('Invalid material ID');
       }
-      console.log("Updating material with ID:", id);
       const response = await api.put(`/materials/${id}`, materialData);
       return response.data;
     } catch (error) {
@@ -96,16 +93,15 @@ export const receiveMaterialStock = createAsyncThunk(
       if (!id || id === 'undefined') {
         return rejectWithValue('Invalid material ID');
       }
-      console.log("Receiving stock for material with ID:", id);
       
       // Prepare the data for the API
       const apiData = {
         quantity: stockData.quantity,
         date: stockData.date,
-        description: stockData.description || ''
+        remarks: stockData.remarks || ''
       };
       
-      const response = await api.post(`/materials/${id}/update-stock`, apiData);
+      const response = await api.post(`/materials/${id}/receive`, apiData);
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -143,7 +139,6 @@ export const deleteStockRecord = createAsyncThunk(
       if (!materialId || materialId === 'undefined' || !batchId) {
         return rejectWithValue('Invalid material ID or batch ID');
       }
-      console.log("Deleting stock record for material ID:", materialId, "batch ID:", batchId);
       
       const response = await api.delete(`/materials/${materialId}/stock-records/${batchId}`);
       return response.data;

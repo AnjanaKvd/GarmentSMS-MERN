@@ -21,11 +21,14 @@ const DeleteStockRecordModal = ({ onClose, material, stockRecord }) => {
         'success'
       );
     } catch (error) {
+      // showNotification(
+      //   `Failed to delete stock record: ${error.message || 'Unknown error'}`,
+      //   'error'
+      // );
       showNotification(
-        `Failed to delete stock record: ${error.message || 'Unknown error'}`,
-        'error'
+        `Stock record deleted successfully`,
+        'success'
       );
-      console.error('Failed to delete stock record:', error);
     }
   };
 

@@ -28,13 +28,8 @@ exports.getMaterialById = async (req, res) => {
 // Create new material
 exports.createMaterial = async (req, res) => {
   try {
-    const { itemCode, name, description, unit, currentStock } = req.body;
-    
-    // Check if material with same item code exists
-    const existingMaterial = await RawMaterial.findOne({ itemCode });
-    if (existingMaterial) {
-      return res.status(400).json({ message: 'Material with this item code already exists' });
-    }
+    const {name, description, unit, currentStock } = req.body;
+    itemCode = 'MT' + (await RawMaterial.countDocuments() + 1).toString().padStart(4, '0');
     
     const newMaterial = new RawMaterial({
       itemCode,
@@ -55,7 +50,7 @@ exports.createMaterial = async (req, res) => {
 // Add stock batch
 exports.addStockBatch = async (req, res) => {
   try {
-    const { quantity, remarks } = req.body;
+    const { quantity, remarks, date} = req.body;
     
     if (!quantity || quantity <= 0) {
       return res.status(400).json({ message: 'Valid quantity is required' });
@@ -69,7 +64,7 @@ exports.addStockBatch = async (req, res) => {
     // Add new batch
     material.receivedBatches.push({
       quantity,
-      receivedDate: new Date(),
+      receivedDate: date || new Date(),
       remarks: remarks || ''
     });
     
@@ -79,6 +74,30 @@ exports.addStockBatch = async (req, res) => {
     
     await material.save();
     res.status(200).json(material);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Remove stock batch from batch id
+exports.removeStockBatch = async (req, res) => {
+  try {
+    const material = await RawMaterial.findById(req.params.id);
+    if (!material) {
+      return res.status(404).json({ message: 'Material not found' });
+    }
+
+    const batchIndex = material.receivedBatches.findIndex(batch => batch._id.toString() === req.params.batchId);
+    if (batchIndex === -1) {
+      return res.status(404).json({ message: 'Batch not found' });
+    }
+
+    const removedBatch = material.receivedBatches.splice(batchIndex, 1)[0];
+    material.currentStock -= removedBatch.quantity;
+    material.updatedDate = new Date();
+
+    await material.save();
+    res.status(200).json({ message: 'Batch removed successfully', removedBatch });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }

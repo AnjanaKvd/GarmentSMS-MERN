@@ -53,6 +53,13 @@ const OrderFulfillmentStatus = () => {
     }
   };
 
+  const getDaysClass = (days) => {
+    if (days < 0) return 'text-gray-500'; // Future date
+    if (days > 30) return 'text-red-500'; // More than 30 days
+    if (days > 15) return 'text-yellow-500'; // Between 15-30 days
+    return 'text-green-500'; // Less than 15 days
+  };
+
   return (
     <div className="bg-white shadow-md rounded-lg p-6">
       <div className="flex justify-between items-center mb-6">
@@ -98,10 +105,9 @@ const OrderFulfillmentStatus = () => {
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">PO No.</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Style No.</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Order Date</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Delivery Date</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Completion</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Material Status</th>
               </tr>
             </thead>
@@ -109,45 +115,34 @@ const OrderFulfillmentStatus = () => {
               {orderFulfillment.map((order, index) => (
                 <tr key={order.id || index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                   <td className="px-4 py-4 text-sm font-medium text-gray-900">{order.poNo}</td>
-                  <td className="px-4 py-4 text-sm text-gray-900">
-                    {order.product.styleNo} - {order.product.itemName}
-                  </td>
+                  <td className="px-4 py-4 text-sm text-gray-900">{order.product}</td>
+                  <td className="px-4 py-4 text-sm text-gray-900">{order.styleNo}</td>
                   <td className="px-4 py-4 text-sm text-gray-900">
                     {new Date(order.orderDate).toLocaleDateString()}
-                  </td>
-                  <td className="px-4 py-4 text-sm text-gray-900">
-                    {new Date(order.deliveryDate).toLocaleDateString()}
+                    <div className={`text-xs ${getDaysClass(order.daysSinceCreated)}`}>
+                      {order.daysSinceCreated < 0 
+                        ? `In ${Math.abs(order.daysSinceCreated)} days` 
+                        : order.daysSinceCreated === 0 
+                          ? 'Today' 
+                          : `${order.daysSinceCreated} days ago`}
+                    </div>
                   </td>
                   <td className="px-4 py-4 text-sm">
                     <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(order.status)}`}>
                       {order.status}
                     </span>
                   </td>
-                  <td className="px-4 py-4 text-sm">
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
-                      <div 
-                        className="bg-blue-600 h-2.5 rounded-full" 
-                        style={{ width: `${order.completionPercentage}%` }}
-                      ></div>
-                    </div>
-                    <span className="text-xs text-gray-500 mt-1">{order.completionPercentage}% Complete</span>
-                  </td>
                   <td className="px-4 py-4 text-sm text-gray-900">
                     <div className="space-y-1">
-                      {order.materialStatus?.map((material, i) => (
+                      {order.materialFulfillment?.map((material, i) => (
                         <div key={i} className="flex justify-between">
-                          <span className="font-medium">{material.name}:</span>
+                          <span className="font-medium">{material.materialName}:</span>
                           <span>
-                            {material.used.toFixed(2)}/{material.required.toFixed(2)} {material.unit}
+                            {material.used.toFixed(2)}/{material.required.toFixed(2)}
                           </span>
                         </div>
                       ))}
                     </div>
-                    {order.daysSinceCreation > 30 && (
-                      <div className="mt-2 text-xs text-red-500">
-                        Order is {order.daysSinceCreation} days old
-                      </div>
-                    )}
                   </td>
                 </tr>
               ))}
@@ -159,4 +154,4 @@ const OrderFulfillmentStatus = () => {
   );
 };
 
-export default OrderFulfillmentStatus; 
+export default OrderFulfillmentStatus;

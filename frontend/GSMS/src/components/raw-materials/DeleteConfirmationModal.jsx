@@ -23,7 +23,6 @@ const DeleteConfirmationModal = ({ onClose, material }) => {
         `Failed to delete material: ${error.message || 'Unknown error'}`,
         'error'
       );
-      console.error('Failed to delete material:', error);
     }
   };
 

@@ -27,7 +27,6 @@ const user = getUserFromToken(token);;
         setUsers(response.data);
         setError(null);
       } catch (error) {
-        console.error('Error fetching users:', error);
         setError(error.response?.data?.message || 'Failed to fetch users');
         setUsers([]);
       } finally {

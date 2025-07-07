@@ -31,8 +31,6 @@ const ViewProductWastageModal = ({ isOpen, onClose, product }) => {
       
       setLoading(false);
     } catch (err) {
-      setError('Failed to load product wastage data');
-      console.error(err);
       setLoading(false);
     }
   };

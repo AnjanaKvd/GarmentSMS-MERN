@@ -24,7 +24,6 @@ const MaterialFormModal = ({ onClose, isEdit = false, material = null }) => {
   useEffect(() => {
     // Only validate material if in edit mode
     if (isEdit && (!material || (!material.id && !material._id))) {
-      console.error("Invalid material object for editing", material);
       onClose(); // Close the modal if material is invalid in edit mode
     }
     
@@ -67,7 +66,6 @@ const MaterialFormModal = ({ onClose, isEdit = false, material = null }) => {
         `Failed to ${isEdit ? 'update' : 'create'} material: ${error.message || 'Unknown error'}`,
         'error'
       );
-      console.error(`Failed to ${isEdit ? 'update' : 'create'} material:`, error);
     }
   };
 

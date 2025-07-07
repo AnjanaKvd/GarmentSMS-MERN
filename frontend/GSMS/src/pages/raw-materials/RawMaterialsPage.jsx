@@ -65,7 +65,6 @@ const RawMaterialsPage = () => {
   // Keep the existing handler functions but rename them to match what's used in the JSX
   const handleEditMaterial = (material) => {
     if (!material || (!material.id && !material._id)) {
-      console.error("Invalid material for editing", material);
       return;
     }
     setSelectedMaterial(material);
@@ -74,7 +73,6 @@ const RawMaterialsPage = () => {
 
   const handleReceiveStock = (material) => {
     if (!material || (!material.id && !material._id)) {
-      console.error("Invalid material for receiving stock", material);
       return;
     }
     setSelectedMaterial(material);
@@ -83,7 +81,6 @@ const RawMaterialsPage = () => {
 
   const handleDeleteMaterial = (material) => {
     if (!material || (!material.id && !material._id)) {
-      console.error("Invalid material for deletion", material);
       return;
     }
     setSelectedMaterial(material);
@@ -180,7 +177,7 @@ const RawMaterialsPage = () => {
                       scope="col"
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                     >
-                      Unit
+                      Code
                     </th>
                     <th 
                       scope="col"
@@ -233,7 +230,7 @@ const RawMaterialsPage = () => {
                           {material.name}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {material.unit}
+                          {material.itemCode}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {material.currentStock} {material.unit}

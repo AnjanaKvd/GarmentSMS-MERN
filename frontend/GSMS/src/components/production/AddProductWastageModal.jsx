@@ -42,7 +42,6 @@ const AddProductWastageModal = ({ isOpen, onClose, onSuccess, product }) => {
       
       setLoading(false);
     } catch (err) {
-      console.error('Error fetching wastage data:', err);
       
       // If wastage data fails, try to get BOM data as fallback
       try {
@@ -63,7 +62,6 @@ const AddProductWastageModal = ({ isOpen, onClose, onSuccess, product }) => {
         });
       } catch (bomErr) {
         setError('Failed to load product materials');
-        console.error(bomErr);
       }
       
       setLoading(false);

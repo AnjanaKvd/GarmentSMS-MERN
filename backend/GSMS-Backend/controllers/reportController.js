@@ -6,11 +6,11 @@ const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
 
 /**
- * Get fabric usage summary by date range or specific order
+ * Get fabric usage summary by date range, specific order, or specific material
  */
 exports.getFabricUsageSummary = async (req, res) => {
   try {
-    const { startDate, endDate, orderId } = req.query;
+    const { startDate, endDate, orderId, materialId } = req.query;
     
     // Create filter object based on query parameters
     let filter = {};
@@ -40,7 +40,11 @@ exports.getFabricUsageSummary = async (req, res) => {
       log.materialUsage.forEach(usage => {
         if (!usage.materialId) return; // Skip if materialId is null
         
-        const materialId = usage.materialId._id.toString();
+        // Skip if materialId filter is provided and doesn't match
+        const currentMaterialId = usage.materialId._id.toString();
+        if (materialId && currentMaterialId !== materialId) return;
+        
+        if (!materialUsageMap.has(currentMaterialId)) {
         
         if (!materialUsageMap.has(materialId)) {
           materialUsageMap.set(materialId, {
@@ -53,7 +57,8 @@ exports.getFabricUsageSummary = async (req, res) => {
             extraWastage: 0,
             totalWastage: 0,
             orderUsage: new Map(),
-            dateUsage: new Map()
+            dateUsage: new Map(),
+            wastageReasons: new Map() // Track wastage reasons
           });
         }
         
@@ -68,44 +73,91 @@ exports.getFabricUsageSummary = async (req, res) => {
           const orderId = log.orderId._id.toString();
           if (!material.orderUsage.has(orderId)) {
             material.orderUsage.set(orderId, {
+              orderId: orderId,
               poNo: log.orderId.poNo || 'Unknown',
               productName: log.orderId.productId ? log.orderId.productId.itemName : 'Unknown',
               styleNo: log.orderId.productId ? log.orderId.productId.styleNo : 'Unknown',
               usage: 0,
-              wastage: 0
+              standardWastage: 0,
+              extraWastage: 0,
+              totalWastage: 0
             });
           }
-          material.orderUsage.get(orderId).usage += usage.usedQty || 0;
-          material.orderUsage.get(orderId).wastage += usage.totalWastage || 0;
+          const orderUsage = material.orderUsage.get(orderId);
+          orderUsage.usage += usage.usedQty || 0;
+          orderUsage.standardWastage += usage.standardWastage || 0;
+          orderUsage.extraWastage += usage.extraWastage || 0;
+          orderUsage.totalWastage += usage.totalWastage || 0;
         }
         
         // Track usage by date
         const dateKey = log.date.toISOString().split('T')[0];
         if (!material.dateUsage.has(dateKey)) {
           material.dateUsage.set(dateKey, {
+            date: dateKey,
             usage: 0,
-            wastage: 0
+            standardWastage: 0,
+            extraWastage: 0,
+            totalWastage: 0
           });
         }
-        material.dateUsage.get(dateKey).usage += usage.usedQty || 0;
-        material.dateUsage.get(dateKey).wastage += usage.totalWastage || 0;
+        const dateUsage = material.dateUsage.get(dateKey);
+        dateUsage.usage += usage.usedQty || 0;
+        dateUsage.standardWastage += usage.standardWastage || 0;
+        dateUsage.extraWastage += usage.extraWastage || 0;
+        dateUsage.totalWastage += usage.totalWastage || 0;
+        
+        // Track wastage reasons
+        if (usage.wastageReason) {
+          const reason = usage.wastageReason;
+          if (!material.wastageReasons.has(reason)) {
+            material.wastageReasons.set(reason, 0);
+          }
+          material.wastageReasons.set(reason, material.wastageReasons.get(reason) + (usage.extraWastage || 0));
+        }
+      }
       });
     });
     
     // Convert maps to arrays for response
     const fabricUsageSummary = Array.from(materialUsageMap.values()).map(material => ({
       ...material,
-      wastePercentage: material.totalUsage > 0 
+      standardWastagePercentage: material.totalUsage > 0 
+        ? ((material.standardWastage / material.totalUsage) * 100).toFixed(2)
+        : 0,
+      extraWastagePercentage: material.totalUsage > 0 
+        ? ((material.extraWastage / material.totalUsage) * 100).toFixed(2)
+        : 0,
+      totalWastagePercentage: material.totalUsage > 0 
         ? ((material.totalWastage / material.totalUsage) * 100).toFixed(2)
         : 0,
-      orderUsage: Array.from(material.orderUsage.values()),
-      dateUsage: Array.from(material.dateUsage.entries()).map(([date, usage]) => ({
-        date,
-        ...usage
+      orderUsage: Array.from(material.orderUsage.values()).map(order => ({
+        ...order,
+        wastagePercentage: order.usage > 0
+          ? ((order.totalWastage / order.usage) * 100).toFixed(2)
+          : 0
+      })),
+      dateUsage: Array.from(material.dateUsage.values()).map(day => ({
+        ...day,
+        wastagePercentage: day.usage > 0
+          ? ((day.totalWastage / day.usage) * 100).toFixed(2)
+          : 0
+      })),
+      wastageReasons: Array.from(material.wastageReasons.entries()).map(([reason, amount]) => ({
+        reason,
+        amount,
+        percentage: material.extraWastage > 0 
+          ? ((amount / material.extraWastage) * 100).toFixed(2)
+          : 0
       }))
     }));
     
-    res.status(200).json(fabricUsageSummary);
+    // If materialId is provided, return detailed report for that material
+    if (materialId && fabricUsageSummary.length > 0) {
+      res.status(200).json(fabricUsageSummary[0]);
+    } else {
+      res.status(200).json(fabricUsageSummary);
+    }
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
@@ -124,10 +176,10 @@ exports.getStockBalance = async (req, res) => {
     const materials = await RawMaterial.find(filter);
     
     const stockBalanceReport = await Promise.all(materials.map(async (material) => {
-      // Get all production logs that used this material and populate orderId to get poNo
+      // Get all production logs that used this material
       const productionLogs = await ProductionLog.find({
         'materialUsage.materialId': material._id
-      }).populate('orderId', 'poNo');
+      }).populate('orderId', 'poNo status');
       
       // Calculate total received, used, and current balance
       const totalReceived = material.receivedBatches.reduce(
@@ -154,7 +206,8 @@ exports.getStockBalance = async (req, res) => {
           type: 'IN',
           quantity: batch.quantity,
           remarks: batch.remarks || 'Material received',
-          balance: 0 // Will calculate later
+          balance: 0, // Will calculate later
+          orderInfo: null
         });
       });
       
@@ -168,8 +221,14 @@ exports.getStockBalance = async (req, res) => {
             date: log.date,
             type: 'OUT',
             quantity: usage.usedQty || 0,
-            remarks: `Used for Order ${log.orderId.poNo}`, // Use poNo instead of orderId
-            balance: 0 // Will calculate later
+            remarks: log.orderId ? `Used for Order ${log.orderId?.poNo || 'N/A'}` : 'Material used',
+            balance: 0, // Will calculate later
+            orderInfo: log.orderId ? {
+              orderId: log.orderId._id,
+              poNo: log.orderId.poNo,
+              status: log.orderId.status,
+              isCompleted: log.orderId.status === 'COMPLETED'
+            } : null
           });
         }
       });
@@ -273,9 +332,12 @@ exports.getOrderFulfillment = async (req, res) => {
 /**
  * Get wastage analysis report
  */
+/**
+ * Get wastage analysis report
+ */
 exports.getWastageAnalysis = async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, materialId } = req.query;
     
     // Create filter object based on query parameters
     let filter = {};
@@ -296,16 +358,21 @@ exports.getWastageAnalysis = async (req, res) => {
     
     // Analyze wastage by material
     const materialWastageMap = new Map();
+    const orderWastageMap = new Map(); // Track wastage by order
+    const dateWastageMap = new Map(); // Track wastage by date
     
     productionLogs.forEach(log => {
       log.materialUsage.forEach(usage => {
         if (!usage.materialId) return; // Skip if materialId is null
         
-        const materialId = usage.materialId._id.toString();
+        const currentMaterialId = usage.materialId._id.toString();
         
-        if (!materialWastageMap.has(materialId)) {
-          materialWastageMap.set(materialId, {
-            id: materialId,
+        // Skip if materialId filter is provided and doesn't match
+        if (materialId && currentMaterialId !== materialId) return;
+        
+        if (!materialWastageMap.has(currentMaterialId)) {
+          materialWastageMap.set(currentMaterialId, {
+            id: currentMaterialId,
             name: usage.materialId.name,
             itemCode: usage.materialId.itemCode,
             unit: usage.materialId.unit,
@@ -313,11 +380,13 @@ exports.getWastageAnalysis = async (req, res) => {
             standardWastage: 0,
             extraWastage: 0,
             totalWastage: 0,
-            wastageReasons: new Map()
+            wastageReasons: new Map(),
+            orderWastage: new Map(),
+            dateWastage: new Map()
           });
         }
         
-        const material = materialWastageMap.get(materialId);
+        const material = materialWastageMap.get(currentMaterialId);
         material.totalUsed += usage.usedQty || 0;
         material.standardWastage += usage.standardWastage || 0;
         material.extraWastage += usage.extraWastage || 0;
@@ -331,6 +400,45 @@ exports.getWastageAnalysis = async (req, res) => {
           }
           material.wastageReasons.set(reason, material.wastageReasons.get(reason) + (usage.extraWastage || 0));
         }
+        
+        // Track wastage by order
+        if (log.orderId) {
+          const orderId = log.orderId._id.toString();
+          if (!material.orderWastage.has(orderId)) {
+            material.orderWastage.set(orderId, {
+              orderId: orderId,
+              poNo: log.orderId.poNo || 'Unknown',
+              productName: log.orderId.productId ? log.orderId.productId.itemName : 'Unknown',
+              styleNo: log.orderId.productId ? log.orderId.productId.styleNo : 'Unknown',
+              usage: 0,
+              standardWastage: 0,
+              extraWastage: 0,
+              totalWastage: 0
+            });
+          }
+          const orderWastage = material.orderWastage.get(orderId);
+          orderWastage.usage += usage.usedQty || 0;
+          orderWastage.standardWastage += usage.standardWastage || 0;
+          orderWastage.extraWastage += usage.extraWastage || 0;
+          orderWastage.totalWastage += usage.totalWastage || 0;
+        }
+        
+        // Track wastage by date
+        const dateKey = log.date.toISOString().split('T')[0];
+        if (!material.dateWastage.has(dateKey)) {
+          material.dateWastage.set(dateKey, {
+            date: dateKey,
+            usage: 0,
+            standardWastage: 0,
+            extraWastage: 0,
+            totalWastage: 0
+          });
+        }
+        const dateWastage = material.dateWastage.get(dateKey);
+        dateWastage.usage += usage.usedQty || 0;
+        dateWastage.standardWastage += usage.standardWastage || 0;
+        dateWastage.extraWastage += usage.extraWastage || 0;
+        dateWastage.totalWastage += usage.totalWastage || 0;
       });
     });
     
@@ -352,10 +460,27 @@ exports.getWastageAnalysis = async (req, res) => {
         percentage: material.extraWastage > 0 
           ? ((amount / material.extraWastage) * 100).toFixed(2)
           : 0
-      }))
+      })),
+      orderWastage: Array.from(material.orderWastage.values()).map(order => ({
+        ...order,
+        wastagePercentage: order.usage > 0
+          ? ((order.totalWastage / order.usage) * 100).toFixed(2)
+          : 0
+      })),
+      dateWastage: Array.from(material.dateWastage.values()).map(day => ({
+        ...day,
+        wastagePercentage: day.usage > 0
+          ? ((day.totalWastage / day.usage) * 100).toFixed(2)
+          : 0
+      })).sort((a, b) => new Date(a.date) - new Date(b.date))
     }));
     
-    res.status(200).json(wastageAnalysis);
+    // If materialId is provided, return detailed report for that material
+    if (materialId && wastageAnalysis.length > 0) {
+      res.status(200).json(wastageAnalysis[0]);
+    } else {
+      res.status(200).json(wastageAnalysis);
+    }
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
@@ -721,7 +846,7 @@ async function generateOrderFulfillmentReport(filters) {
 }
 
 async function generateWastageAnalysisReport(filters) {
-  const { startDate, endDate } = filters;
+  const { startDate, endDate, materialId } = filters;
   
   // Create filter object based on query parameters
   let filter = {};
@@ -747,11 +872,14 @@ async function generateWastageAnalysisReport(filters) {
     log.materialUsage.forEach(usage => {
       if (!usage.materialId) return; // Skip if materialId is null
       
-      const materialId = usage.materialId._id.toString();
+      const currentMaterialId = usage.materialId._id.toString();
       
-      if (!materialWastageMap.has(materialId)) {
-        materialWastageMap.set(materialId, {
-          id: materialId,
+      // Skip if materialId filter is provided and doesn't match
+      if (materialId && currentMaterialId !== materialId) return;
+      
+      if (!materialWastageMap.has(currentMaterialId)) {
+        materialWastageMap.set(currentMaterialId, {
+          id: currentMaterialId,
           name: usage.materialId.name,
           itemCode: usage.materialId.itemCode,
           unit: usage.materialId.unit,
@@ -759,11 +887,13 @@ async function generateWastageAnalysisReport(filters) {
           standardWastage: 0,
           extraWastage: 0,
           totalWastage: 0,
-          wastageReasons: new Map()
+          wastageReasons: new Map(),
+          orderWastage: new Map(),
+          dateWastage: new Map()
         });
       }
       
-      const material = materialWastageMap.get(materialId);
+      const material = materialWastageMap.get(currentMaterialId);
       material.totalUsed += usage.usedQty || 0;
       material.standardWastage += usage.standardWastage || 0;
       material.extraWastage += usage.extraWastage || 0;
@@ -777,6 +907,45 @@ async function generateWastageAnalysisReport(filters) {
         }
         material.wastageReasons.set(reason, material.wastageReasons.get(reason) + (usage.extraWastage || 0));
       }
+      
+      // Track wastage by order
+      if (log.orderId) {
+        const orderId = log.orderId._id.toString();
+        if (!material.orderWastage.has(orderId)) {
+          material.orderWastage.set(orderId, {
+            orderId: orderId,
+            poNo: log.orderId.poNo || 'Unknown',
+            productName: log.orderId.productId ? log.orderId.productId.itemName : 'Unknown',
+            styleNo: log.orderId.productId ? log.orderId.productId.styleNo : 'Unknown',
+            usage: 0,
+            standardWastage: 0,
+            extraWastage: 0,
+            totalWastage: 0
+          });
+        }
+        const orderWastage = material.orderWastage.get(orderId);
+        orderWastage.usage += usage.usedQty || 0;
+        orderWastage.standardWastage += usage.standardWastage || 0;
+        orderWastage.extraWastage += usage.extraWastage || 0;
+        orderWastage.totalWastage += usage.totalWastage || 0;
+      }
+      
+      // Track wastage by date
+      const dateKey = log.date.toISOString().split('T')[0];
+      if (!material.dateWastage.has(dateKey)) {
+        material.dateWastage.set(dateKey, {
+          date: dateKey,
+          usage: 0,
+          standardWastage: 0,
+          extraWastage: 0,
+          totalWastage: 0
+        });
+      }
+      const dateWastage = material.dateWastage.get(dateKey);
+      dateWastage.usage += usage.usedQty || 0;
+      dateWastage.standardWastage += usage.standardWastage || 0;
+      dateWastage.extraWastage += usage.extraWastage || 0;
+      dateWastage.totalWastage += usage.totalWastage || 0;
     });
   });
   
@@ -798,7 +967,19 @@ async function generateWastageAnalysisReport(filters) {
       percentage: material.extraWastage > 0 
         ? ((amount / material.extraWastage) * 100).toFixed(2)
         : 0
-    }))
+    })),
+    orderWastage: Array.from(material.orderWastage.values()).map(order => ({
+      ...order,
+      wastagePercentage: order.usage > 0
+        ? ((order.totalWastage / order.usage) * 100).toFixed(2)
+        : 0
+    })),
+    dateWastage: Array.from(material.dateWastage.values()).map(day => ({
+      ...day,
+      wastagePercentage: day.usage > 0
+        ? ((day.totalWastage / day.usage) * 100).toFixed(2)
+        : 0
+    })).sort((a, b) => new Date(a.date) - new Date(b.date))
   }));
 }
 

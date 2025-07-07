@@ -19,14 +19,13 @@ const ReceiveStockModal = ({ onClose, material }) => {
     defaultValues: {
       quantity: '',
       date: today,
-      description: ''
+      remarks: ''
     }
   });
 
   useEffect(() => {
     // Check if material has a valid ID
     if (!material || (!material.id && !material._id)) {
-      console.error("Invalid material object for receiving stock", material);
       onClose();
     }
   }, [material, onClose]);
@@ -59,7 +58,6 @@ const ReceiveStockModal = ({ onClose, material }) => {
         `Failed to receive stock: ${error.message || 'Unknown error'}`,
         'error'
       );
-      console.error('Failed to receive stock:', error);
     }
   };
 
@@ -131,13 +129,13 @@ const ReceiveStockModal = ({ onClose, material }) => {
             </div>
 
             <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                Description
+              <label htmlFor="remarks" className="block text-sm font-medium text-gray-700">
+              Remarks
               </label>
               <textarea
-                id="description"
-                {...register('description')}
-                placeholder="e.g. New shipment from Supplier X, PO #12345"
+                id="remarks"
+                {...register('remarks')}
+                placeholder="e.g. New shipment from Supplier X"
                 rows={3}
                 className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               />
