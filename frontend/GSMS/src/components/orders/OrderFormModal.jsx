@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import api from '../../services/api';
+import { Combobox } from '@headlessui/react';
+import { CheckIcon, ChevronUpDownIcon } from '@heroicons/react/20/solid';
 
 const OrderFormModal = ({ isOpen, onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
@@ -11,6 +13,7 @@ const OrderFormModal = ({ isOpen, onClose, onSuccess }) => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -34,6 +37,30 @@ const OrderFormModal = ({ isOpen, onClose, onSuccess }) => {
       [name]: value
     }));
   };
+
+  const handleProductSelect = (product) => {
+    setFormData(prev => ({
+      ...prev,
+      productId: product?._id || ''
+    }));
+  };
+
+  // Filter products based on search query
+  const filteredProducts = useMemo(() => {
+    if (!searchQuery) return products;
+    
+    const query = searchQuery.toLowerCase();
+    return products.filter(product => 
+      product.itemName?.toLowerCase().includes(query) || 
+      product.styleNo?.toLowerCase().includes(query) ||
+      product._id?.toLowerCase().includes(query)
+    );
+  }, [products, searchQuery]);
+
+  // Get the selected product object
+  const selectedProduct = useMemo(() => {
+    return products.find(p => p._id === formData.productId) || null;
+  }, [products, formData.productId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -94,25 +121,71 @@ const OrderFormModal = ({ isOpen, onClose, onSuccess }) => {
 
                 <form onSubmit={handleSubmit} className="space-y-4">
 
-                  <div>
-                    <label htmlFor="productId" className="block text-sm font-medium text-gray-700">
-                      Product
-                    </label>
-                    <select
-                      id="productId"
+                  <div className="relative">
+                    <Combobox as="div" value={selectedProduct} onChange={handleProductSelect}>
+                      <Combobox.Label className="block text-sm font-medium text-gray-700">
+                        Product
+                      </Combobox.Label>
+                      <div className="relative mt-1">
+                        <div className="relative w-full cursor-default overflow-hidden rounded-lg bg-white text-left shadow-sm border border-gray-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-indigo-300 sm:text-sm">
+                          <Combobox.Input
+                            className="w-full border-none py-2 pl-3 pr-10 text-sm leading-5 text-gray-900 focus:ring-0"
+                            displayValue={(product) => product ? `${product.itemName} - ${product.styleNo}` : ''}
+                            onChange={(event) => setSearchQuery(event.target.value)}
+                            placeholder="Search products..."
+                            autoComplete="off"
+                          />
+                          <Combobox.Button className="absolute inset-y-0 right-0 flex items-center pr-2">
+                            <ChevronUpDownIcon
+                              className="h-5 w-5 text-gray-400"
+                              aria-hidden="true"
+                            />
+                          </Combobox.Button>
+                        </div>
+                        <Combobox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+                          {filteredProducts.length === 0 && searchQuery !== '' ? (
+                            <div className="relative cursor-default select-none py-2 px-4 text-gray-700">
+                              Nothing found.
+                            </div>
+                          ) : (
+                            filteredProducts.map((product) => (
+                              <Combobox.Option
+                                key={product._id}
+                                className={({ active }) =>
+                                  `relative cursor-default select-none py-2 pl-10 pr-4 ${
+                                    active ? 'bg-indigo-600 text-white' : 'text-gray-900'
+                                  }`
+                                }
+                                value={product}
+                              >
+                                {({ selected, active }) => (
+                                  <>
+                                    <span className={`block truncate ${selected ? 'font-medium' : 'font-normal'}`}>
+                                      {product.itemName} - {product.styleNo}
+                                    </span>
+                                    {selected ? (
+                                      <span
+                                        className={`absolute inset-y-0 left-0 flex items-center pl-3 ${
+                                          active ? 'text-white' : 'text-indigo-600'
+                                        }`}
+                                      >
+                                        <CheckIcon className="h-5 w-5" aria-hidden="true" />
+                                      </span>
+                                    ) : null}
+                                  </>
+                                )}
+                              </Combobox.Option>
+                            ))
+                          )}
+                        </Combobox.Options>
+                      </div>
+                    </Combobox>
+                    <input
+                      type="hidden"
                       name="productId"
-                      value={formData.productId}
-                      onChange={handleChange}
+                      value={formData.productId || ''}
                       required
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    >
-                      <option value="">Select a product</option>
-                      {products.map(product => (
-                        <option key={product._id} value={product._id}>
-                          {product.itemName} - {product.styleNo}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </div>
 
                   <div>

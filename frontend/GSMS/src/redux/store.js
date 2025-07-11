@@ -6,6 +6,7 @@ import productsReducer from './slices/productsSlice';
 import productionReducer from './slices/productionSlice';
 import reportsReducer from './slices/reportsSlice';
 import dashboardReducer from './slices/dashboardSlice';
+import ordersReducer from './slices/ordersSlice';
 
 const store = configureStore({
   reducer: {
@@ -15,6 +16,7 @@ const store = configureStore({
     production: productionReducer,
     reports: reportsReducer,
     dashboard: dashboardReducer,
+    orders: ordersReducer,
     // Add other reducers here as your app grows
   },
   // Optional: add middleware here if needed

@@ -202,7 +202,7 @@ const Orders = () => {
           <ul className="list-disc list-inside text-yellow-700">
             {insufficientStockError.materials.map((material, index) => (
               <li key={index}>
-                {material.materialName}: Required {material.requiredQty}, Available {material.currentStock}
+                {material.materialName}: Required {material.requiredQty}, Available {material.currentStock}, Need {material.requiredQty - material.currentStock}
               </li>
             ))}
           </ul>

@@ -17,6 +17,19 @@ exports.getAllOrders = async (req, res) => {
   }
 };
 
+// Get completed orders
+exports.getCompletedOrders = async (req, res) => {
+  try {
+    const orders = await Order.find({ status: 'COMPLETED' })
+      .populate('productId', 'styleNo itemName')
+      .select('-consumptionReport');
+      
+    res.status(200).json(orders);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 // Get order by ID
 exports.getOrderById = async (req, res) => {
   try {
@@ -149,6 +162,11 @@ exports.updateOrderStatus = async (req, res) => {
           { $inc: { currentStock: -item.requiredQty } }
         );
       }
+    }
+    
+    // If changing to COMPLETED status and it wasn't completed before, set the completedDate
+    if (status === 'COMPLETED' && order.status !== 'COMPLETED') {
+      order.completedDate = new Date();
     }
     
     order.status = status;

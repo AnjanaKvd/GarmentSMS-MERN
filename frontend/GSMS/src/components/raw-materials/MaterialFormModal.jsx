@@ -116,9 +116,9 @@ const MaterialFormModal = ({ onClose, isEdit = false, material = null }) => {
                 <option value="cm">centimeters (cm)</option>
                 <option value="kg">kilograms (kg)</option>
                 <option value="g">grams (g)</option>
-                <option value="yards">yards</option>
+                <option value="yd">yards (yd)</option>
                 <option value="pcs">pieces (pcs)</option>
-                <option value="rolls">rolls</option>
+                <option value="roll">rolls (roll)</option>
               </select>
               {errors.unit && (
                 <p className="mt-2 text-sm text-red-600">{errors.unit.message}</p>

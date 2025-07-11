@@ -29,9 +29,22 @@ exports.getProductById = async (req, res) => {
 // Create new product
 exports.createProduct = async (req, res) => {
   try {
-    const {itemName, description, materialsRequired } = req.body;
-    const productsCount = await Product.countDocuments();
-    const styleNo = `ST${(productsCount + 1).toString().padStart(4, '0')}`;
+    const { styleNo, itemName, description, materialsRequired } = req.body;
+    
+    // Validate styleNo is provided
+    if (!styleNo) {
+      return res.status(400).json({ 
+        message: 'Style number is required' 
+      });
+    }
+    
+    // Check if styleNo already exists
+    const existingProduct = await Product.findOne({ styleNo });
+    if (existingProduct) {
+      return res.status(400).json({ 
+        message: 'A product with this style number already exists' 
+      });
+    }
     
     // Validate materials
     if (materialsRequired && materialsRequired.length > 0) {
