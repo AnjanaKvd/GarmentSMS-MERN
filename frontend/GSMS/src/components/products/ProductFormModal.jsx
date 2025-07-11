@@ -11,6 +11,7 @@ const ProductFormModal = ({ isOpen, onClose, product = null }) => {
   const { showNotification } = useNotification();
   const { materials } = useSelector((state) => state.materials);
   const [formData, setFormData] = useState({
+    styleNo: '',
     itemName: '',
     description: '',
     materialsRequired: []
@@ -20,26 +21,23 @@ const ProductFormModal = ({ isOpen, onClose, product = null }) => {
     quantityPerPiece: 0
   });
   const [errors, setErrors] = useState({});
-  
+
   useEffect(() => {
     if (materials.length === 0) {
       dispatch(fetchMaterials());
     }
-    
+
     if (product) {
       setFormData({
+        styleNo: product.styleNo || '',
         itemName: product.itemName || '',
         description: product.description || '',
         materialsRequired: product.materialsRequired || []
       });
       setErrors({});
-    } else {
-      setFormData({
-        itemName: '',
-        description: '',
-        materialsRequired: []
-      });
-      setErrors({});
+    } else if (!isOpen) {
+      // Only reset form when modal is closed
+      resetForm();
     }
   }, [dispatch, product, materials.length]);
 
@@ -50,7 +48,6 @@ const ProductFormModal = ({ isOpen, onClose, product = null }) => {
       [name]: value
     });
     
-    // Clear error for this field when user types
     if (errors[name]) {
       setErrors({
         ...errors,
@@ -96,13 +93,11 @@ const ProductFormModal = ({ isOpen, onClose, product = null }) => {
       return;
     }
     
-    // Check if material already exists
     const existingIndex = formData.materialsRequired.findIndex(
       m => m.materialId === materialInput.materialId
     );
     
     if (existingIndex !== -1) {
-      // Update existing material
       const updatedMaterials = [...formData.materialsRequired];
       updatedMaterials[existingIndex] = materialInput;
       
@@ -111,14 +106,12 @@ const ProductFormModal = ({ isOpen, onClose, product = null }) => {
         materialsRequired: updatedMaterials
       });
     } else {
-      // Add new material
       setFormData({
         ...formData,
         materialsRequired: [...formData.materialsRequired, { ...materialInput }]
       });
     }
     
-    // Reset input
     setMaterialInput({ materialId: '', quantityPerPiece: 0 });
     setErrors({
       ...errors,
@@ -139,6 +132,10 @@ const ProductFormModal = ({ isOpen, onClose, product = null }) => {
   const validateForm = () => {
     const newErrors = {};
     
+    if (!formData.styleNo.trim()) {
+      newErrors.styleNo = 'Style Number is required';
+    }
+    
     if (!formData.itemName.trim()) {
       newErrors.itemName = 'Item Name is required';
     }
@@ -151,6 +148,20 @@ const ProductFormModal = ({ isOpen, onClose, product = null }) => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const resetForm = () => {
+    setFormData({
+      styleNo: '',
+      itemName: '',
+      description: '',
+      materialsRequired: []
+    });
+    setMaterialInput({
+      materialId: '',
+      quantityPerPiece: 0
+    });
+    setErrors({});
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -160,15 +171,51 @@ const ProductFormModal = ({ isOpen, onClose, product = null }) => {
     
     try {
       if (product) {
-        await dispatch(updateProduct({ id: product.id || product._id, productData: formData })).unwrap();
-        showNotification(`Product ${formData.itemName} updated successfully`, 'success');
+        // For update operation
+        const result = await dispatch(updateProduct({ 
+          id: product.id || product._id, 
+          productData: formData 
+        }));
+        
+        if (updateProduct.fulfilled.match(result)) {
+          showNotification(`Product ${formData.itemName} updated successfully`, 'success');
+          onClose();
+        } else if (updateProduct.rejected.match(result)) {
+          const error = result.payload?.message || result.error?.message || 'Failed to update product';
+          throw new Error(error);
+        }
       } else {
-        await dispatch(createProduct(formData)).unwrap();
-        showNotification(`Product ${formData.itemName} created successfully`, 'success');
+        // For create operation
+        const result = await dispatch(createProduct(formData));
+        
+        if (createProduct.fulfilled.match(result)) {
+          showNotification(`Product ${formData.itemName} created successfully`, 'success');
+          resetForm();
+          onClose(); // Close the modal after successful creation
+        } else if (createProduct.rejected.match(result)) {
+          const error = result.payload?.message || result.error?.message || 'Failed to create product';
+          
+          if (error.includes('style number already exists')) {
+            onClose();
+            setErrors(prev => ({
+              ...prev,
+              styleNo: 'A product with this style number already exists'
+            }));
+          } else {
+            onClose();
+            throw new Error(error);
+          }
+        }
       }
-      onClose();
     } catch (error) {
-      showNotification(`Failed to ${product ? 'update' : 'create'} product: ${error.message || 'Unknown error'}`, 'error');
+      console.error('Error in handleSubmit:', error);
+      // Only show notification if we're not handling a style number duplicate
+      if (!errors.styleNo) {
+        showNotification(
+          `Failed to ${product ? 'update' : 'create'} product: ${error.message || 'Unknown error'}`, 
+          'error'
+        );
+      }
     }
   };
 
@@ -180,7 +227,7 @@ const ProductFormModal = ({ isOpen, onClose, product = null }) => {
         <div className="fixed inset-0 transition-opacity">
           <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
         </div>
-        <span className="hidden sm:inline-block sm:align-middle sm:h-screen"></span>&#8203;
+        <span className="hidden sm:inline-block sm:align-middle sm:h-screen">​</span>
         <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
           <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
             <div className="sm:flex sm:items-start">
@@ -197,76 +244,112 @@ const ProductFormModal = ({ isOpen, onClose, product = null }) => {
                     <XMarkIcon className="h-6 w-6" aria-hidden="true" />
                   </button>
                 </div>
-                <div className="mt-2">
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Item Name *</label>
-                      <input
-                        type="text"
-                        name="itemName"
-                        value={formData.itemName}
-                        onChange={handleChange}
-                        className={`mt-1 block w-full border ${errors.itemName ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
-                      />
-                      {errors.itemName && (
-                        <p className="mt-1 text-sm text-red-600">{errors.itemName}</p>
-                      )}
-                    </div>
+                
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <label htmlFor="styleNo" className="block text-sm font-medium text-gray-700">
+                      Style Number *
+                    </label>
+                    <input
+                      type="text"
+                      name="styleNo"
+                      id="styleNo"
+                      value={formData.styleNo}
+                      onChange={handleChange}
+                      className={`mt-1 block w-full border ${
+                        errors.styleNo ? 'border-red-500' : 'border-gray-300'
+                      } rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                      placeholder="Enter style number (e.g., ST0001)"
+                    />
+                    {errors.styleNo && (
+                      <p className="mt-1 text-sm text-red-600">{errors.styleNo}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label htmlFor="itemName" className="block text-sm font-medium text-gray-700">
+                      Item Name *
+                    </label>
+                    <input
+                      type="text"
+                      name="itemName"
+                      id="itemName"
+                      value={formData.itemName}
+                      onChange={handleChange}
+                      className={`mt-1 block w-full border ${
+                        errors.itemName ? 'border-red-500' : 'border-gray-300'
+                      } rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                      placeholder="Enter item name"
+                    />
+                    {errors.itemName && (
+                      <p className="mt-1 text-sm text-red-600">{errors.itemName}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                      Description
+                    </label>
+                    <textarea
+                      name="description"
+                      id="description"
+                      value={formData.description}
+                      onChange={handleChange}
+                      rows="3"
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    ></textarea>
+                  </div>
+
+                  <div className="border-t border-gray-200 pt-4">
+                    <h4 className="text-md font-medium text-gray-900 mb-4">Bill of Materials *</h4>
                     
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Description</label>
-                      <textarea
-                        name="description"
-                        value={formData.description}
-                        onChange={handleChange}
-                        rows="3"
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                      ></textarea>
-                    </div>
-                    
-                    <div className="border-t border-gray-200 pt-4">
-                      <h4 className="text-md font-medium text-gray-900">Bill of Materials *</h4>
-                      
-                      <div className="mt-2">
-                        <div className="flex space-x-2 items-end">
-                          <div className="flex-1">
-                            <label className="block text-sm font-medium text-gray-700">Material</label>
-                            <select
-                              name="materialId"
-                              value={materialInput.materialId}
-                              onChange={handleMaterialInputChange}
-                              className={`block w-full border ${errors.materialId ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
-                            >
-                              <option value="">Select material...</option>
-                              {materials.map((material) => (
-                                <option 
-                                  key={material.id || material._id} 
-                                  value={material.id || material._id}
-                                >
-                                  {material.name || material.itemName} ({material.itemCode})
-                                </option>
-                              ))}
-                            </select>
-                            {errors.materialId && (
-                              <p className="mt-1 text-sm text-red-600">{errors.materialId}</p>
-                            )}
-                          </div>
-                          <div className="w-32">
-                            <label className="block text-sm font-medium text-gray-700">Quantity</label>
-                            <input
-                              type="number"
-                              name="quantityPerPiece"
-                              value={materialInput.quantityPerPiece}
-                              onChange={handleMaterialInputChange}
-                              step="0.01"
-                              min="0"
-                              placeholder="Qty/Piece"
-                              className={`block w-full border ${errors.quantityPerPiece ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
-                            />
-                            {errors.quantityPerPiece && (
-                              <p className="mt-1 text-sm text-red-600">{errors.quantityPerPiece}</p>
-                            )}
-                          </div>
+                    <div className="space-y-4">
+                      <div className="flex space-x-2">
+                        <div className="flex-1">
+                          <label className="block text-sm font-medium text-gray-700">Material</label>
+                          <select
+                            name="materialId"
+                            value={materialInput.materialId}
+                            onChange={handleMaterialInputChange}
+                            className={`mt-1 block w-full border ${
+                              errors.materialId ? 'border-red-500' : 'border-gray-300'
+                            } rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                          >
+                            <option value="">Select material...</option>
+                            {materials.map((material) => (
+                              <option 
+                                key={material.id || material._id} 
+                                value={material.id || material._id}
+                              >
+                                {material.name || material.itemName} ({material.itemCode})
+                              </option>
+                            ))}
+                          </select>
+                          {errors.materialId && (
+                            <p className="mt-1 text-sm text-red-600">{errors.materialId}</p>
+                          )}
+                        </div>
+                        
+                        <div className="w-32">
+                          <label className="block text-sm font-medium text-gray-700">Quantity</label>
+                          <input
+                            type="number"
+                            name="quantityPerPiece"
+                            value={materialInput.quantityPerPiece || ''}
+                            onChange={handleMaterialInputChange}
+                            step="0.01"
+                            min="0"
+                            placeholder="Qty/Piece"
+                            className={`mt-1 block w-full border ${
+                              errors.quantityPerPiece ? 'border-red-500' : 'border-gray-300'
+                            } rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                          />
+                          {errors.quantityPerPiece && (
+                            <p className="mt-1 text-sm text-red-600">{errors.quantityPerPiece}</p>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-end">
                           <button
                             type="button"
                             onClick={addMaterial}
@@ -277,77 +360,82 @@ const ProductFormModal = ({ isOpen, onClose, product = null }) => {
                         </div>
                       </div>
                       
-                      {/* Materials list */}
-                      <div className="mt-3">
-                        {formData.materialsRequired.length > 0 ? (
-                          <div className="border rounded-md overflow-hidden">
-                            <table className="min-w-full divide-y divide-gray-200">
-                              <thead className="bg-gray-50">
-                                <tr>
-                                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Material</th>
-                                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
-                                  <th className="px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
-                                </tr>
-                              </thead>
-                              <tbody className="bg-white divide-y divide-gray-200">
-                                {formData.materialsRequired.map((material, index) => {
-                                  const materialData = materials.find(m => (m.id || m._id) === material.materialId);
-                                  return (
-                                    <tr key={index}>
-                                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
-                                        {materialData ? 
-                                          `${materialData.name || materialData.itemName} (${materialData.itemCode})` : 
-                                          'Material not found'}
-                                      </td>
-                                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
-                                        {material.quantityPerPiece} {materialData?.unit || ''}
-                                      </td>
-                                      <td className="px-4 py-2 whitespace-nowrap text-right text-sm font-medium">
-                                        <button
-                                          type="button"
-                                          onClick={() => removeMaterial(material.materialId)}
-                                          className="text-red-600 hover:text-red-900"
-                                        >
-                                          Remove
-                                        </button>
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
-                        ) : (
-                          errors.materialsRequired && (
-                            <p className="text-sm text-red-600">{errors.materialsRequired}</p>
-                          )
-                        )}
-                      </div>
+                      {formData.materialsRequired.length > 0 ? (
+                        <div className="border rounded-md overflow-hidden">
+                          <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  Material
+                                </th>
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  Quantity
+                                </th>
+                                <th className="px-4 py-2"></th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {formData.materialsRequired.map((material, index) => {
+                                const materialData = materials.find(m => 
+                                  (m.id || m._id) === material.materialId
+                                );
+                                return (
+                                  <tr key={index}>
+                                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                                      {materialData ? 
+                                        `${materialData.name || materialData.itemName} (${materialData.itemCode})` : 
+                                        'Material not found'}
+                                    </td>
+                                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                                      {material.quantityPerPiece} {materialData?.unit || ''}
+                                    </td>
+                                    <td className="px-4 py-2 whitespace-nowrap text-right text-sm font-medium">
+                                      <button
+                                        type="button"
+                                        onClick={() => removeMaterial(material.materialId)}
+                                        className="text-red-600 hover:text-red-900"
+                                      >
+                                        Remove
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : errors.materialsRequired ? (
+                        <p className="text-sm text-red-600">{errors.materialsRequired}</p>
+                      ) : null}
                     </div>
-                    
-                    <div className="mt-4 text-sm text-gray-600 italic">
-                      Note: Add without wastage. Wastages can be added from the <Link to="/production" className="text-indigo-600 hover:text-indigo-800">production</Link> page.
-                    </div>
-                  </form>
-                </div>
+                  </div>
+                  
+                  <div className="mt-4 text-sm text-gray-600 italic">
+                    Note: Add without wastage. Wastages can be added from the{' '}
+                    <Link to="/production" className="text-indigo-600 hover:text-indigo-800">
+                      production
+                    </Link>{' '}
+                    page.
+                  </div>
+                  
+                  <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
+                    <button
+                      type="submit"
+                      className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:col-start-2 sm:text-sm"
+                    >
+                      {product ? 'Update' : 'Create'} Product
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:col-start-1 sm:text-sm"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
-          </div>
-          <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-            <button
-              type="button"
-              onClick={handleSubmit}
-              className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm"
-            >
-              {product ? 'Update' : 'Create'}
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-            >
-              Cancel
-            </button>
           </div>
         </div>
       </div>
