@@ -68,7 +68,11 @@ const orderSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
-  consumptionReport: [consumptionReportSchema]
+  consumptionReport: [consumptionReportSchema],
+  completedDate: {
+    type: Date,
+    default: null
+  }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Order', orderSchema);

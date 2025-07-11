@@ -18,10 +18,26 @@ export const getStockBalance = createAsyncThunk(
   'reports/getStockBalance',
   async (params, { rejectWithValue }) => {
     try {
-      const response = await api.get('/reports/stock-balance', { params });
+      // Create a clean params object with only defined values
+      const cleanParams = {};
+      
+      // Add only the parameters that are defined
+      if (params.materialId) cleanParams.materialId = params.materialId;
+      if (params.status) cleanParams.status = params.status;
+      if (params.lowStockOnly) cleanParams.lowStockOnly = params.lowStockOnly;
+      if (params.startDate) cleanParams.startDate = params.startDate;
+      if (params.endDate) cleanParams.endDate = params.endDate;
+      
+      const response = await api.get('/reports/stock-balance', { 
+        params: cleanParams,
+        paramsSerializer: {
+          indexes: null // Prevents arrays from being serialized with indexes
+        }
+      });
+      
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || 'Failed to fetch stock balance data');
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch stock balance data');
     }
   }
 );

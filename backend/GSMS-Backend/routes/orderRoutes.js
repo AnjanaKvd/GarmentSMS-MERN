@@ -9,6 +9,9 @@ router.use(verifyToken);
 // Get all orders
 router.get('/', orderController.getAllOrders);
 
+// Get completed orders
+router.get('/completed', orderController.getCompletedOrders);
+
 // Get order by ID
 router.get('/:id', orderController.getOrderById);
 
