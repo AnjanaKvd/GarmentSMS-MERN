@@ -126,17 +126,23 @@ const FabricUsageSummary = () => {
       // If materials is null/undefined, return empty array
       if (!materials) return [];
       
-      // Handle case when filtering by material (single material object)
-      if (materials.materialId) {
-        return [materials]; // Wrap single material in array for consistent handling
+      // Handle array of materials from the API response
+      if (Array.isArray(materials)) {
+        return materials.map(material => ({
+          ...material,
+          materialName: material.name,
+          totalRequiredQty: material.totalUsage + (material.totalWastage || 0),
+          totalWastage: material.totalWastage || 0,
+          totalUsage: material.totalUsage || 0,
+          wastagePercentage: material.wastePercentage || 0,
+          orders: material.orderUsage?.map(order => ({
+            ...order,
+            requiredQty: order.usage,
+            totalRequiredQty: order.usage + (order.wastage || 0),
+            completedDate: order.date
+          })) || []
+        }));
       }
-      
-      // Handle array of materials
-      if (Array.isArray(materials)) return materials;
-      
-      // Handle nested materials in data or materials property
-      if (materials.data && Array.isArray(materials.data)) return materials.data;
-      if (materials.materials && Array.isArray(materials.materials)) return materials.materials;
       
       return [];
     } catch (error) {
@@ -286,7 +292,10 @@ const FabricUsageSummary = () => {
               <h3 className="text-sm font-medium text-gray-500">Total Orders</h3>
               <p className="text-xl font-semibold">{summary.totalOrders || 0}</p>
             </div>
-            
+            <div className="bg-white p-4 rounded-lg shadow">
+              <h3 className="text-sm font-medium text-gray-500">Total Usage</h3>
+              <p className="text-xl font-semibold">{summary.totalUsage?.toFixed(2) || '0.00'} units</p>
+            </div>
           </div>
 
           {/* Materials Table */}
@@ -294,7 +303,7 @@ const FabricUsageSummary = () => {
             <div key={`material-${material.materialId || index}`} className="bg-white shadow rounded-lg overflow-hidden mt-8">
               <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
                 <h3 className="text-lg font-medium leading-6 text-gray-900">
-                  {material.materialName} - {material.itemCode || 'N/A'}
+                  {material.name || material.materialName} - {material.itemCode || 'N/A'}
                 </h3>
                 <div className="mt-2 grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
@@ -330,31 +339,37 @@ const FabricUsageSummary = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {material.orders?.map((order, idx) => (
-                      <tr key={`${material.materialId}-order-${idx}`} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {order.poNo || 'N/A'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {order.productName || 'N/A'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {order.styleNo || 'N/A'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500">
-                          {order.requiredQty?.toFixed(2) || '0.00'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500">
-                          {order.wastage?.toFixed(2) || '0.00'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-right text-gray-900">
-                          {order.totalRequiredQty?.toFixed(2) || '0.00'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500">
-                          {formatDate(order.completedDate)}
-                        </td>
-                      </tr>
-                    ))}
+                    {(material.orderUsage || material.orders || []).map((order, idx) => {
+                      const usage = order.usage || order.requiredQty || 0;
+                      const wastage = order.wastage || 0;
+                      const total = usage + wastage;
+                      
+                      return (
+                        <tr key={`${material.materialId}-order-${idx}`} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {order.poNo || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {order.productName || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {order.styleNo || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500">
+                            {usage.toFixed(2)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500">
+                            {wastage.toFixed(2)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-right text-gray-900">
+                            {total.toFixed(2)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500">
+                            {formatDate(order.date || order.completedDate)}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

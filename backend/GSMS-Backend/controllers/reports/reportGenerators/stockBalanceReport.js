@@ -187,9 +187,18 @@ async function generateStockBalanceReport(filters = {}) {
         const inStockItems = totalItems - outOfStockItems - lowStockItems;
         
         // Filter materials if low stock only is requested
-        const filteredMaterials = lowStockOnly 
+        const filterLowStock = lowStockOnly === 'true' || lowStockOnly === true;
+        const filteredMaterials = filterLowStock 
             ? processedMaterials.filter(m => m.status === 'Low Stock' || m.status === 'Out of Stock')
             : processedMaterials;
+            
+        console.log('Filtering materials:', {
+            lowStockOnly,
+            filterLowStock,
+            totalMaterials: processedMaterials.length,
+            filteredCount: filteredMaterials.length,
+            sampleStatuses: processedMaterials.slice(0, 3).map(m => m.status)
+        });
         
         // Sort materials by name by default
         filteredMaterials.sort((a, b) => a.name.localeCompare(b.name));
@@ -209,10 +218,34 @@ async function generateStockBalanceReport(filters = {}) {
             generatedAt: new Date()
         };
         
-        return {
+        const result = {
             summary,
-            materials: filteredMaterials
+            materials: filteredMaterials,
+            _debug: {
+                filterApplied: filterLowStock,
+                totalMaterials: processedMaterials.length,
+                filteredMaterials: filteredMaterials.length,
+                allStatuses: [...new Set(processedMaterials.map(m => m.status))]
+            }
         };
+        
+        console.log('Generated report data:', {
+            summary: {
+                totalItems: summary.totalItems,
+                inStock: summary.inStockItems,
+                lowStock: summary.lowStockItems,
+                outOfStock: summary.outOfStockItems
+            },
+            materialsCount: filteredMaterials.length,
+            sampleMaterials: filteredMaterials.slice(0, 2).map(m => ({
+                name: m.name,
+                status: m.status,
+                closingBalance: m.closingBalance,
+                reorderLevel: m.reorderLevel
+            }))
+        });
+        
+        return result;
         
     } catch (error) {
         console.error('Error generating stock balance report:', error);

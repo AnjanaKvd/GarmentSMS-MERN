@@ -88,8 +88,16 @@ function createSummaryWorksheet(workbook, reportData) {
         });
     }
     
-    // Get materials data - the report returns materials directly in the root object
-    const materials = Array.isArray(reportData.materials) ? reportData.materials : [];
+    // Get materials data - check both root and materials property
+    let materials = [];
+    if (Array.isArray(reportData)) {
+        materials = reportData; // If reportData is the materials array itself
+    } else if (Array.isArray(reportData.materials)) {
+        materials = reportData.materials;
+    } else if (Array.isArray(reportData.filteredMaterials)) {
+        materials = reportData.filteredMaterials;
+    }
+    
     const summary = reportData.summary || {};
     
     console.log('Materials array length:', materials.length);
@@ -245,8 +253,14 @@ function createSummaryWorksheet(workbook, reportData) {
     });
     
     // Add materials data
-    materials.forEach(material => {
-        const row = worksheet.addRow({
+    console.log(`Adding ${materials.length} materials to the worksheet`);
+    materials.forEach((material, index) => {
+        if (!material) {
+            console.warn(`Material at index ${index} is undefined or null`);
+            return;
+        }
+
+        const materialData = {
             itemCode: material.itemCode || 'N/A',
             name: material.name || 'N/A',
             category: material.category || 'N/A',
@@ -259,37 +273,56 @@ function createSummaryWorksheet(workbook, reportData) {
             lastTransaction: material.lastTransaction 
                 ? format(new Date(material.lastTransaction), 'PPpp') 
                 : 'N/A'
-        });
+        };
+
+        console.log(`Adding material ${index + 1}:`, materialData);
         
-        // Style status cell based on stock level
-        const statusCell = row.getCell('I'); // Column I is Status
-        let statusBgColor = COLORS.LIGHT_GREEN;
-        let statusTextColor = COLORS.SUCCESS;
-        
-        if (material.status === 'Low Stock' || (material.reorderLevel && material.closingBalance <= material.reorderLevel)) {
-            statusBgColor = COLORS.LIGHT_AMBER;
-            statusTextColor = COLORS.WARNING;
-        } else if (material.status === 'Out of Stock' || material.closingBalance <= 0) {
-            statusBgColor = COLORS.LIGHT_RED;
-            statusTextColor = COLORS.DANGER;
+        try {
+            const row = worksheet.addRow(materialData);
+            console.log(`Added row at position ${row.number} for material ${material.itemCode || 'N/A'}`);
+            
+            // Style status cell based on stock level
+            const statusCell = row.getCell('I'); // Column I is Status
+            let statusBgColor = COLORS.LIGHT_GREEN;
+            let statusTextColor = COLORS.SUCCESS;
+            
+            const materialStatus = material.status || 
+                                 (material.closingBalance <= 0 ? 'Out of Stock' : 
+                                 (material.reorderLevel && material.closingBalance <= material.reorderLevel ? 'Low Stock' : 'In Stock'));
+            
+            if (materialStatus === 'Low Stock') {
+                statusBgColor = COLORS.LIGHT_AMBER;
+                statusTextColor = COLORS.WARNING;
+            } else if (materialStatus === 'Out of Stock') {
+                statusBgColor = COLORS.LIGHT_RED;
+                statusTextColor = COLORS.DANGER;
+            }
+            
+            styleCell(statusCell, {
+                bgColor: statusBgColor,
+                color: statusTextColor,
+                bold: true,
+                alignment: { horizontal: 'center' }
+            });
+        } catch (error) {
+            console.error(`Error processing material ${material.itemCode || 'unknown'}:`, error);
         }
-        
-        styleCell(statusCell, {
-            bgColor: statusBgColor,
-            color: statusTextColor,
-            bold: true,
-            alignment: { horizontal: 'center' }
-        });
     });
     
     // Add total row
     if (materials.length > 0) {
+        // Calculate the actual last row number (header + materials)
+        const firstDataRow = 3; // Row where data starts (after title, date, and header)
+        const lastDataRow = firstDataRow + materials.length - 1;
+        
+        console.log(`Adding total row. Data rows: ${firstDataRow} to ${lastDataRow}`);
+        
         const totalRow = worksheet.addRow([
             'TOTAL', '', '', '',
-            { formula: `SUM(E3:E${2 + materials.length})` },
-            { formula: `SUM(F3:F${2 + materials.length})` },
-            { formula: `SUM(G3:G${2 + materials.length})` },
-            { formula: `SUM(H3:H${2 + materials.length})` },
+            { formula: `SUM(E${firstDataRow}:E${lastDataRow})` },
+            { formula: `SUM(F${firstDataRow}:F${lastDataRow})` },
+            { formula: `SUM(G${firstDataRow}:G${lastDataRow})` },
+            { formula: `SUM(H${firstDataRow}:H${lastDataRow})` },
             '', ''
         ]);
         
@@ -450,38 +483,107 @@ async function addStockBalanceToExcel(workbook, reportData) {
         // Log the incoming reportData structure
         console.log('=== REPORT DATA STRUCTURE ===');
         console.log('Top-level keys:', Object.keys(reportData));
-        console.log('Has filteredMaterials:', !!reportData.filteredMaterials);
-        console.log('Has materials:', !!reportData.materials);
         
-        if (reportData.filteredMaterials) {
-            console.log('filteredMaterials count:', reportData.filteredMaterials.length);
-            if (reportData.filteredMaterials.length > 0) {
-                console.log('First filtered material sample:', {
-                    itemCode: reportData.filteredMaterials[0].itemCode,
-                    name: reportData.filteredMaterials[0].name,
-                    transactions: reportData.filteredMaterials[0].transactions?.length
+        // Check for materials in the expected structure from the report generator
+        let materials = [];
+        let summary = {};
+        
+        // The report generator returns { summary: {...}, materials: [...] }
+        if (reportData.summary && Array.isArray(reportData.materials)) {
+            console.log('Using materials from reportData.materials');
+            materials = reportData.materials;
+            summary = reportData.summary;
+            
+            // Log the first material's structure for debugging
+            if (materials.length > 0) {
+                console.log('First material structure:', {
+                    _id: materials[0]._id,
+                    itemCode: materials[0].itemCode,
+                    name: materials[0].name,
+                    unit: materials[0].unit,
+                    currentStock: materials[0].currentStock,
+                    status: materials[0].status,
+                    hasTransactions: Array.isArray(materials[0].transactions),
+                    transactionCount: materials[0].transactions?.length || 0
                 });
             }
+        } 
+        // Legacy support for direct materials array
+        else if (Array.isArray(reportData)) {
+            console.log('Report data is an array, using it as materials');
+            materials = reportData;
+        }
+        // Check if materials array exists in the root
+        else if (Array.isArray(reportData.materials)) {
+            console.log('Found materials array in reportData.materials');
+            materials = reportData.materials;
+        }
+        // Check if filteredMaterials exists (legacy support)
+        else if (Array.isArray(reportData.filteredMaterials)) {
+            console.log('Using filteredMaterials array (legacy)');
+            materials = reportData.filteredMaterials;
         }
         
-        if (reportData.materials) {
-            console.log('materials count:', reportData.materials.length);
-            if (reportData.materials.length > 0) {
-                console.log('First material sample:', {
-                    itemCode: reportData.materials[0].itemCode,
-                    name: reportData.materials[0].name,
-                    transactions: reportData.materials[0].transactions?.length
-                });
-            }
+        console.log(`Found ${materials.length} materials to process`);
+        if (materials.length > 0) {
+            console.log('First material sample:', {
+                itemCode: materials[0].itemCode,
+                name: materials[0].name,
+                unit: materials[0].unit,
+                currentStock: materials[0].currentStock,
+                openingBalance: materials[0].openingBalance,
+                received: materials[0].received,
+                issued: materials[0].issued,
+                closingBalance: materials[0].closingBalance,
+                status: materials[0].status,
+                hasTransactions: Array.isArray(materials[0].transactions)
+            });
+        } else {
+            console.log('No materials found in the report data');
+            console.log('Report data structure:', JSON.stringify(reportData, null, 2));
         }
         
         console.log('=== CREATING SUMMARY WORKSHEET ===');
-        // Create summary worksheet
-        const summaryWorksheet = createSummaryWorksheet(workbook, reportData);
+        // Create summary worksheet with the materials and summary
+        const summaryData = {
+            ...reportData,
+            materials: materials, // Ensure materials is set
+            summary: summary,     // Use the summary we extracted
+            startDate: summary.startDate || reportData.startDate,
+            endDate: summary.endDate || reportData.endDate
+        };
+        
+        console.log('Creating summary worksheet with data:', {
+            materialsCount: materials.length,
+            hasSummary: !!summary,
+            startDate: summaryData.startDate,
+            endDate: summaryData.endDate,
+            summaryKeys: summary ? Object.keys(summary) : 'No summary',
+            firstMaterialKeys: materials[0] ? Object.keys(materials[0]) : 'No materials'
+        });
+        
+        // Log the first material's data for debugging
+        if (materials.length > 0) {
+            console.log('First material data for worksheet:', {
+                itemCode: materials[0].itemCode,
+                name: materials[0].name,
+                unit: materials[0].unit,
+                openingBalance: materials[0].openingBalance,
+                received: materials[0].received,
+                issued: materials[0].issued,
+                closingBalance: materials[0].closingBalance,
+                status: materials[0].status,
+                lastTransaction: materials[0].lastTransaction
+            });
+        }
+        
+        const summaryWorksheet = createSummaryWorksheet(workbook, summaryData);
         console.log('Summary worksheet created with name:', summaryWorksheet.name);
         
-        // Create a worksheet for each material with transactions
-        const materials = Array.isArray(reportData.materials) ? reportData.materials : [];
+        // Verify the worksheet has data
+        console.log(`Worksheet row count: ${summaryWorksheet.rowCount}`);
+        
+        // Process individual material worksheets
         console.log(`Processing ${materials.length} materials for individual worksheets`);
         
         let materialCount = 0;
