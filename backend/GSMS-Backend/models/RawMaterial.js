@@ -31,7 +31,7 @@ const rawMaterialSchema = new mongoose.Schema({
   unit: {
     type: String,
     required: true,
-    enum: ["m", "kg", "pcs", "yd"]
+    enum: ["m", "kg", "pcs", "yd", "cm", "g", "roll"]
   },
   currentStock: {
     type: Number,

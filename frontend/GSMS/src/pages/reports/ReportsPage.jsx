@@ -81,7 +81,7 @@ const user = getUserFromToken(token);;
               In-Out Stock Balance
             </button>
           )}
-          {canViewOrderFulfillment && (
+          {/* {canViewOrderFulfillment && (
             <button
               onClick={() => setActiveTab('orderFulfillment')}
               className={`px-4 py-2 font-medium text-sm rounded-md transition-colors ${
@@ -93,8 +93,8 @@ const user = getUserFromToken(token);;
             >
               Order Fulfillment Status
             </button>
-          )}
-          {canViewWastageAnalysis && (
+          )} */}
+          {/* {canViewWastageAnalysis && (
             <button
               onClick={() => setActiveTab('wastageAnalysis')}
               className={`px-4 py-2 font-medium text-sm rounded-md transition-colors ${
@@ -106,7 +106,7 @@ const user = getUserFromToken(token);;
             >
               Wastage Analysis
             </button>
-          )}
+          )} */}
         </nav>
       </div>
       

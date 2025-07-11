@@ -308,7 +308,7 @@ const StockBalanceReport = () => {
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Opening</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Received</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Issued</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Closing</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Balance</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Unit</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                   </tr>
