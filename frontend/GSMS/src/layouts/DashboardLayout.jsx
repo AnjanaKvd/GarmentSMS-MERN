@@ -171,7 +171,7 @@ const DashboardLayout = () => {
           <div className="flex-1 px-4 flex justify-between">
             <div className="flex-1 flex">
               <h1 className="text-2xl font-semibold text-gray-900 self-center">
-                Garment Stock Management
+                Fabric Stock Management
               </h1>
             </div>
             <div className="ml-4 flex items-center md:ml-6">

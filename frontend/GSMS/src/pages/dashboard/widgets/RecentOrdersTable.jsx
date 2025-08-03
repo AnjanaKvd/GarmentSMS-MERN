@@ -1,18 +1,67 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
-const RecentActivityTable = ({ 
+const getStatusBadge = (status) => {
+  const statusClasses = {
+    COMPLETED: 'bg-green-100 text-green-800',
+    PRODUCING: 'bg-yellow-100 text-yellow-800',
+    PENDING: 'bg-blue-100 text-blue-800'
+  };
+
+  return (
+    <span
+      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+        statusClasses[status] || 'bg-gray-100 text-gray-800'
+      }`}
+    >
+      {status.charAt(0) + status.slice(1).toLowerCase()}
+    </span>
+  );
+};
+
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A';
+  const options = { year: 'numeric', month: 'short', day: 'numeric' };
+  return new Date(dateString).toLocaleDateString(undefined, options);
+};
+
+const RecentOrdersTable = ({ 
   title, 
   data = [], 
   columns = [],
-  emptyMessage = 'No data available',
-  viewAllLink
+  emptyMessage = 'No orders found',
+  viewAllLink = '/orders'
 }) => {
+  // Render cell content based on column key
   const renderCellContent = (item, column) => {
     if (column.render) {
       return column.render(item[column.key], item);
     }
-    return item[column.key] || '-';
+    
+    const value = item[column.key];
+    
+    switch (column.key) {
+      case 'status':
+        return getStatusBadge(value);
+      case 'date':
+      case 'createdAt':
+      case 'updatedAt':
+      case 'orderDate':
+        return formatDate(value);
+      case 'poNo':
+        return (
+          <Link
+            to={`/orders/${item.id || ''}`}
+            className="text-indigo-600 hover:text-indigo-900 font-medium"
+          >
+            {value}
+          </Link>
+        );
+      case 'customer':
+        return item.customer?.name || value || 'N/A';
+      default:
+        return value || '-';
+    }
   };
 
   return (
@@ -46,7 +95,7 @@ const RecentActivityTable = ({
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {data.length > 0 ? (
+              {data && data.length > 0 ? (
                 data.map((item, index) => (
                   <tr 
                     key={item.id || index} 
@@ -91,8 +140,9 @@ const RecentActivityTable = ({
           </table>
         </div>
       </div>
+      
     </div>
   );
 };
 
-export default RecentActivityTable;
+export default RecentOrdersTable;

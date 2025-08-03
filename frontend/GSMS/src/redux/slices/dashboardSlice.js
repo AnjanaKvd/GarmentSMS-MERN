@@ -1,82 +1,71 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
-import { normalizeId } from '../../utils/apiHelpers';
 
 // Fetch dashboard statistics
 export const fetchDashboardStats = createAsyncThunk(
   'dashboard/fetchStats',
   async (_, { rejectWithValue }) => {
     try {
-      // In a real implementation, this would call a backend endpoint
-      // For now, we'll simulate the API call with a timeout
-      const [materialsResponse, productsResponse, ordersResponse, productionResponse] = await Promise.all([
+      const [materialsResponse, ordersResponse] = await Promise.all([
         api.get('/materials'),
-        api.get('/products'),
-        api.get('/orders'),
-        api.get('/production')
+        api.get('/orders')
       ]);
 
-      // Calculate statistics from the responses
-      const totalRawMaterials = materialsResponse.data.length;
+      const materials = materialsResponse.data || [];
+      const orders = ordersResponse.data || [];
+
+      // Calculate statistics
+      const totalRawMaterials = materials.length;
+      const lowStockMaterials = materials.filter(m => m.currentStock <= 0).length;
       
-      // Calculate in-stock balance (sum of all material quantities)
-      const inStockBalance = materialsResponse.data.reduce(
-        (total, material) => total + (material.quantity || 0),
-        0
-      );
-      
-      // Count active purchase orders
-      const activePurchaseOrders = ordersResponse.data.filter(
-        order => order.status === 'PENDING' || order.status === 'PROCESSING'
+      const activePurchaseOrders = orders.filter(
+        order => order.status === 'PENDING' || order.status === 'PRODUCING'
       ).length;
       
-      // Get upcoming deliveries (orders with status SHIPPED)
-      const upcomingDeliveries = ordersResponse.data.filter(
-        order => order.status === 'COMPLETED'
-      ).length;
-      
-      // Get recent material entries
-      const recentEntries = materialsResponse.data
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      // Prepare recent materials
+      const recentMaterials = [...materials]
+        .sort((a, b) => new Date(b.updatedDate || b.createdAt) - new Date(a.updatedDate || a.createdAt))
         .slice(0, 5)
         .map(material => ({
-          id: material._id || material.id,
-          material: material.name,
-          quantity: material.quantity,
-          date: new Date(material.createdAt).toISOString().split('T')[0]
+          id: material._id,
+          itemCode: material.itemCode,
+          name: material.name,
+          currentStock: material.currentStock,
+          unit: material.unit,
+          updatedDate: material.updatedDate || material.createdAt
         }));
 
-      // Get top products
-      const topProducts = productsResponse.data
+      // Prepare recent orders
+      const recentOrders = [...orders]
+        .sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate))
         .slice(0, 5)
-        .map(product => ({
-          id: product._id || product.id,
-          name: product.name,
-          styleNo: product.styleNo,
-          category: product.category
+        .map(order => ({
+          id: order._id,
+          poNo: order.poNo,
+          productName: order.productId?.itemName || 'N/A',
+          styleNo: order.productId?.styleNo || 'N/A',
+          quantity: order.quantity,
+          status: order.status,
+          orderDate: order.orderDate
         }));
 
-      // Get recent production activities
-      const recentProduction = productionResponse.data
-        .sort((a, b) => new Date(b.date) - new Date(a.date))
-        .slice(0, 5)
-        .map(log => ({
-          id: log._id || log.id,
-          product: log.productName || 'Unknown Product',
-          quantity: log.quantity,
-          date: new Date(log.date).toISOString().split('T')[0]
-        }));
+      // Calculate order status distribution
+      const orderStatusCounts = orders.reduce((acc, order) => {
+        acc[order.status] = (acc[order.status] || 0) + 1;
+        return acc;
+      }, { COMPLETED: 0, PRODUCING: 0, PENDING: 0, CANCELLED: 0 });
 
       return {
         totalRawMaterials,
-        inStockBalance,
+        lowStockMaterials,
         activePurchaseOrders,
-        upcomingDeliveries,
-        recentEntries,
-        topProducts,
-        recentProduction
+        recentMaterials,
+        recentOrders,
+        orderStatusCounts,
+        totalOrders: orders.length
       };
     } catch (error) {
+      console.error('Error fetching dashboard data:', error);
       return rejectWithValue(
         error.response?.data?.message || 'Failed to fetch dashboard statistics'
       );
@@ -89,12 +78,17 @@ const dashboardSlice = createSlice({
   initialState: {
     stats: {
       totalRawMaterials: 0,
-      inStockBalance: 0,
+      lowStockMaterials: 0,
       activePurchaseOrders: 0,
-      upcomingDeliveries: 0,
-      recentEntries: [],
-      topProducts: [],
-      recentProduction: []
+      totalOrders: 0,
+      recentMaterials: [],
+      recentOrders: [],
+      orderStatusCounts: {
+        COMPLETED: 0,
+        PRODUCING: 0,
+        PENDING: 0,
+        CANCELLED: 0
+      }
     },
     isLoading: false,
     error: null

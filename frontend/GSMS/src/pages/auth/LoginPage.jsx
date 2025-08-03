@@ -42,7 +42,7 @@ const LoginPage = () => {
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900">Sign in to your account</h2>
         <p className="mt-2 text-sm text-gray-600">
-          Enter your credentials to access the Garment Stock Management System
+          Enter your credentials to access the Fabric Stock Management System
         </p>
       </div>
       
