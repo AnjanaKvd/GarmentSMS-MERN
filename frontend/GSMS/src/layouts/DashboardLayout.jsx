@@ -12,6 +12,7 @@ import {
   ChartBarIcon,
   BellIcon,
   UserIcon,
+  UserGroupIcon,
   ArrowRightOnRectangleIcon,
   ShieldCheckIcon
 } from '@heroicons/react/24/outline';
@@ -44,7 +45,7 @@ const DashboardLayout = () => {
     { name: 'Raw Materials', href: '/raw-materials', icon: CubeIcon, allowed: true },
     { name: 'Products & BOM', href: '/products', icon: ShoppingBagIcon, allowed: true },
     { name: 'Orders', href: '/orders', icon: ClipboardDocumentListIcon, allowed: isManagerOrAdmin || isProductionOrHigher },
-    { name: 'Production', href: '/production', icon: DocumentTextIcon, allowed: isProductionOrHigher },
+    { name: 'Customers', href: '/customers', icon: UserGroupIcon, allowed: isManagerOrAdmin },
     { name: 'Reports', href: '/reports', icon: ChartBarIcon, allowed: isManagerOrAdmin || isProductionOrHigher || isViewer},
     { name: 'Users', href: '/users', icon: UserIcon, allowed: isAdmin },
   ];
@@ -171,7 +172,7 @@ const DashboardLayout = () => {
           <div className="flex-1 px-4 flex justify-between">
             <div className="flex-1 flex">
               <h1 className="text-2xl font-semibold text-gray-900 self-center">
-                Garment Stock Management
+                Fabric Stock Management
               </h1>
             </div>
             <div className="ml-4 flex items-center md:ml-6">

@@ -14,6 +14,7 @@ app.use('/api/products', require('./routes/productRoutes'));
 app.use('/api/orders', require('./routes/orderRoutes'));
 app.use('/api/production', require('./routes/productionRoutes'));
 app.use('/api/reports', require('./routes/reportRoutes'));
+app.use('/api/customers', require('./routes/customerRoutes'));
 
 // Swagger (optional)
 app.use('/api-docs', require('./utils/swagger'));

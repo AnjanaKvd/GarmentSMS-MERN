@@ -33,11 +33,12 @@ const productSchema = new mongoose.Schema({
     trim: true
   },
   description: String,
+  customer: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Customer',
+    required: false
+  },
   materialsRequired: [materialRequirementSchema],
-  wastageRemarks: {
-    type: String,
-    default: ''
-  }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Product', productSchema); 

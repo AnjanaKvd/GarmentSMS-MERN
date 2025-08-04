@@ -1,19 +1,22 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { createProduct, updateProduct } from '../../redux/slices/productsSlice';
 import { fetchMaterials } from '../../redux/slices/materialsSlice';
+import { fetchCustomers, createCustomer } from '../../redux/slices/customersSlice';
 import { useNotification } from '../common/Notification';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, CheckIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { Link } from 'react-router-dom';
 
 const ProductFormModal = ({ isOpen, onClose, product = null }) => {
   const dispatch = useDispatch();
   const { showNotification } = useNotification();
   const { materials } = useSelector((state) => state.materials);
+  const { customers } = useSelector((state) => state.customers);
   const [formData, setFormData] = useState({
     styleNo: '',
     itemName: '',
     description: '',
+    customer: null,
     materialsRequired: []
   });
   const [materialInput, setMaterialInput] = useState({
@@ -21,10 +24,32 @@ const ProductFormModal = ({ isOpen, onClose, product = null }) => {
     quantityPerPiece: 0
   });
   const [errors, setErrors] = useState({});
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isCreatingCustomer, setIsCreatingCustomer] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   useEffect(() => {
     if (materials.length === 0) {
       dispatch(fetchMaterials());
+    }
+    
+    // Fetch customers when modal opens
+    if (isOpen) {
+      dispatch(fetchCustomers({ page: 1, limit: 1000 })); // Fetch all customers with a high limit
     }
 
     if (product) {
@@ -32,6 +57,7 @@ const ProductFormModal = ({ isOpen, onClose, product = null }) => {
         styleNo: product.styleNo || '',
         itemName: product.itemName || '',
         description: product.description || '',
+        customer: product.customer || null,
         materialsRequired: product.materialsRequired || []
       });
       setErrors({});
@@ -39,7 +65,7 @@ const ProductFormModal = ({ isOpen, onClose, product = null }) => {
       // Only reset form when modal is closed
       resetForm();
     }
-  }, [dispatch, product, materials.length]);
+  }, [dispatch, product, materials.length, isOpen]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -153,69 +179,97 @@ const ProductFormModal = ({ isOpen, onClose, product = null }) => {
       styleNo: '',
       itemName: '',
       description: '',
+      customer: null,
       materialsRequired: []
     });
     setMaterialInput({
       materialId: '',
       quantityPerPiece: 0
     });
+    setSearchTerm('');
+    setIsDropdownOpen(false);
+    setIsCreatingCustomer(false);
     setErrors({});
+  };
+
+  // Filter customers based on search term
+  const filteredCustomers = useMemo(() => {
+    if (!searchTerm) return customers;
+    const term = searchTerm.toLowerCase();
+    return customers.filter(customer => 
+      customer.name.toLowerCase().includes(term) ||
+      (customer.email && customer.email.toLowerCase().includes(term)) ||
+      (customer.phone && customer.phone.includes(term))
+    );
+  }, [customers, searchTerm]);
+
+  // Check if we should show the "Create new customer" option
+  const showCreateOption = useMemo(() => {
+    if (!searchTerm || isCreatingCustomer) return false;
+    const term = searchTerm.trim().toLowerCase();
+    return term.length > 0 && !customers.some(c => c.name.toLowerCase() === term);
+  }, [searchTerm, customers, isCreatingCustomer]);
+
+  const handleCustomerSelect = (customer) => {
+    setFormData({ ...formData, customer });
+    setSearchTerm(customer.name);
+    setIsDropdownOpen(false);
+    setIsCreatingCustomer(false);
+  };
+
+  const handleCreateCustomer = async (e) => {
+    e.preventDefault();
+    if (!searchTerm.trim()) return;
+    
+    try {
+      const newCustomer = await dispatch(createCustomer({
+        name: searchTerm.trim(),
+        // Add other default fields if needed
+      })).unwrap();
+      
+      setFormData({ ...formData, customer: newCustomer });
+      setSearchTerm(newCustomer.name);
+      setIsDropdownOpen(false);
+      showNotification('Customer created successfully', 'success');
+    } catch (error) {
+      showNotification(error || 'Failed to create customer', 'error');
+    } finally {
+      setIsCreatingCustomer(false);
+    }
+  };
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'Enter' && showCreateOption) {
+      handleCreateCustomer(e);
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!validateForm()) {
+    const validationErrors = validateForm();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
       return;
     }
     
+    // Prepare the data to be sent
+    const productData = {
+      ...formData,
+      customer: formData.customer?._id || null // Send only the customer ID or null
+    };
+    
     try {
       if (product) {
-        // For update operation
-        const result = await dispatch(updateProduct({ 
-          id: product.id || product._id, 
-          productData: formData 
-        }));
-        
-        if (updateProduct.fulfilled.match(result)) {
-          showNotification(`Product ${formData.itemName} updated successfully`, 'success');
-          onClose();
-        } else if (updateProduct.rejected.match(result)) {
-          const error = result.payload?.message || result.error?.message || 'Failed to update product';
-          throw new Error(error);
-        }
+        await dispatch(updateProduct({ id: product._id, productData })).unwrap();
+        showNotification('Product updated successfully', 'success');
       } else {
-        // For create operation
-        const result = await dispatch(createProduct(formData));
-        
-        if (createProduct.fulfilled.match(result)) {
-          showNotification(`Product ${formData.itemName} created successfully`, 'success');
-          resetForm();
-          onClose(); // Close the modal after successful creation
-        } else if (createProduct.rejected.match(result)) {
-          const error = result.payload?.message || result.error?.message || 'Failed to create product';
-          
-          if (error.includes('style number already exists')) {
-            onClose();
-            setErrors(prev => ({
-              ...prev,
-              styleNo: 'A product with this style number already exists'
-            }));
-          } else {
-            onClose();
-            throw new Error(error);
-          }
-        }
+        await dispatch(createProduct(productData)).unwrap();
+        showNotification('Product created successfully', 'success');
       }
+      onClose();
     } catch (error) {
-      console.error('Error in handleSubmit:', error);
-      // Only show notification if we're not handling a style number duplicate
-      if (!errors.styleNo) {
-        showNotification(
-          `Failed to ${product ? 'update' : 'create'} product: ${error.message || 'Unknown error'}`, 
-          'error'
-        );
-      }
+      showNotification(error || 'An error occurred', 'error');
     }
   };
 
@@ -286,18 +340,114 @@ const ProductFormModal = ({ isOpen, onClose, product = null }) => {
                     )}
                   </div>
 
-                  <div>
+                  <div className="mb-4">
                     <label htmlFor="description" className="block text-sm font-medium text-gray-700">
                       Description
                     </label>
                     <textarea
-                      name="description"
                       id="description"
+                      name="description"
+                      rows={3}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                       value={formData.description}
                       onChange={handleChange}
-                      rows="3"
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    ></textarea>
+                    />
+                    {errors.description && <p className="mt-1 text-sm text-red-600">{errors.description}</p>}
+                  </div>
+                  
+                  <div className="mb-4" ref={dropdownRef}>
+                    <label htmlFor="customer-search" className="block text-sm font-medium text-gray-700">
+                      Customer (Optional)
+                    </label>
+                    <div className="relative mt-1">
+                      <div className="relative">
+                        <input
+                          type="text"
+                          id="customer-search"
+                          className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm pr-10"
+                          placeholder="Search or add customer..."
+                          value={searchTerm || (formData.customer?.name || '')}
+                          onChange={(e) => {
+                            setSearchTerm(e.target.value);
+                            if (e.target.value === '') {
+                              setFormData({ ...formData, customer: null });
+                            }
+                          }}
+                          onFocus={() => setIsDropdownOpen(true)}
+                          onKeyDown={handleSearchKeyDown}
+                        />
+                        {formData.customer ? (
+                          <button
+                            type="button"
+                            className="absolute inset-y-0 right-0 flex items-center pr-2 text-gray-400 hover:text-gray-600"
+                            onClick={() => {
+                              setFormData({ ...formData, customer: null });
+                              setSearchTerm('');
+                            }}
+                          >
+                            <XMarkIcon className="h-5 w-5" />
+                          </button>
+                        ) : (
+                          <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                            <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {isDropdownOpen && (
+                        <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
+                          {filteredCustomers.length > 0 ? (
+                            filteredCustomers.map((customer) => (
+                              <div
+                                key={customer._id}
+                                className={`cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-indigo-50 ${
+                                  formData.customer?._id === customer._id ? 'bg-indigo-100' : ''
+                                }`}
+                                onClick={() => handleCustomerSelect(customer)}
+                              >
+                                <div className="flex items-center">
+                                  <span className="font-medium truncate">
+                                    {customer.name}
+                                    {customer.country && ` (${customer.country})`}
+                                  </span>
+                                  {customer.email && (
+                                    <span className="ml-2 text-xs text-gray-500 truncate">{customer.email}</span>
+                                  )}
+                                </div>
+                                {formData.customer?._id === customer._id && (
+                                  <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-indigo-600">
+                                    <CheckIcon className="h-5 w-5" />
+                                  </span>
+                                )}
+                              </div>
+                            ))
+                          ) : (
+                            <div className="px-4 py-2 text-sm text-gray-500">
+                              No customers found
+                            </div>
+                          )}
+                          
+                          {showCreateOption && (
+                            <div 
+                              className="cursor-pointer select-none relative py-2 pl-3 pr-9 text-indigo-600 hover:bg-indigo-50"
+                              onClick={handleCreateCustomer}
+                            >
+                              <div className="flex items-center">
+                                <PlusIcon className="h-4 w-4 mr-2" />
+                                <span>Create "{searchTerm}"</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {formData.customer && (
+                      <div className="mt-1 text-xs text-gray-500">
+                        Press backspace and enter to edit, or click X to clear
+                      </div>
+                    )}
                   </div>
 
                   <div className="border-t border-gray-200 pt-4">
@@ -411,11 +561,7 @@ const ProductFormModal = ({ isOpen, onClose, product = null }) => {
                   </div>
                   
                   <div className="mt-4 text-sm text-gray-600 italic">
-                    Note: Add without wastage. Wastages can be added from the{' '}
-                    <Link to="/production" className="text-indigo-600 hover:text-indigo-800">
-                      production
-                    </Link>{' '}
-                    page.
+                    Note: Add without wastage. Wastages can be added later.
                   </div>
                   
                   <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">

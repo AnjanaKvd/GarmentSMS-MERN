@@ -226,60 +226,67 @@ const RawMaterialsPage = () => {
                         className="hover:bg-gray-50 cursor-pointer"
                         onClick={() => navigate(`/raw-materials/${material.id || material._id}/ledger`)}
                       >
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {material.name}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {material.itemCode}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {material.currentStock} {material.unit}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(material.updatedDate).toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex justify-end space-x-2" onClick={(e) => e.stopPropagation()}>
-                      
-                            {canReceiveStock && (
-                              <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleReceiveStock(material);
-                              }}
-                              title="Receive stock"
-                              className="text-green-600 hover:text-green-900"
-                            >
-                              Receive
-                            </button>
-                            
-                            )}
-                            {canEdit && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEditMaterial(material);
-                                }}
-                                title="Edit item"
-                                className="text-blue-600 hover:text-blue-900"
-                              >
-                                Edit
-                              </button>
-                            )}
-                            {canDelete && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteMaterial(material);
-                                }}
-                                title="Delete item"
-                                className="text-red-600 hover:text-red-900"
-                              >
-                                Delete
-                              </button>
-                            )}
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-500 truncate max-w-[200px]" title={material.name}>
+                            {material.name}
                           </div>
                         </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-500 truncate max-w-[150px]" title={material.itemCode}>
+                            {material.itemCode}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-500">
+                            {material.currentStock} {material.unit}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-500" title={new Date(material.updatedDate).toLocaleString()}>
+                            {new Date(material.updatedDate).toLocaleDateString()}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+  <div className="flex justify-end space-x-2" onClick={(e) => e.stopPropagation()}>
+    {canReceiveStock && (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          handleReceiveStock(material);
+        }}
+        title="Receive stock"
+        className="px-3 py-1 text-sm font-medium text-white bg-green-600 rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+      >
+        Receive
+      </button>
+    )}
+    {canEdit && (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          handleEditMaterial(material);
+        }}
+        title="Edit item"
+        className="px-3 py-1 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      >
+        Edit
+      </button>
+    )}
+    {canDelete && (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          handleDeleteMaterial(material);
+        }}
+        title="Delete item"
+        className="px-3 py-1 text-sm font-medium text-white bg-red-600 rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+      >
+        Delete
+      </button>
+    )}
+  </div>
+</td>
+
                       </tr>
                     ))
                   )}

@@ -117,7 +117,7 @@ const ViewProductWastageModal = ({ isOpen, onClose, product }) => {
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap">
                           <div className="text-sm text-gray-900">
-                            {calculateWastageQty(material)} {material.unit || ''}
+                            {calculateWastageQty(material)} {material.unit}
                           </div>
                         </td>
                         <td className="px-3 py-2">

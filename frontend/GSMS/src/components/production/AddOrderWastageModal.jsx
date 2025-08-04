@@ -18,32 +18,39 @@ const AddOrderWastageModal = ({ isOpen, onClose, onSuccess, order }) => {
       fetchOrderUsageData();
     }
   }, [order, isOpen]);
-  
+
   const fetchOrderUsageData = async () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Fetch order usage data to get materials list
       const response = await api.get(`/orders/${order._id}/usage`);
       const usage = response.data.usage || [];
       setOrderUsage(response.data);
-      
+
       setFormData({
-        materialUsage: usage.map(material => ({
-          materialId: material.materialId,
-          materialName: material.materialName,
-          itemCode: material.itemCode,
-          requiredQty: material.requiredQty || 0,
-          unit: material.unit, 
-          standardWastage: material.standardWastage || 0,
-          extraWastage: 0,
-          totalWastage: material.standardWastage || 0,
-          wastageReason: ''
-        })),
+        materialUsage: usage.map(material => {
+          // Calculate current extra wastage from wastageHistory
+          const currentExtraWastage = material.wastageHistory?.reduce((sum, log) => {
+            return sum + (log.extraWastage || 0);
+          }, 0) || 0;
+          
+          return {
+            materialId: material.materialId,
+            materialName: material.materialName,
+            itemCode: material.itemCode,
+            requiredQty: material.requiredQty || 0,
+            unit: material.unit, 
+            standardWastage: material.standardWastage || 0,
+            extraWastage: currentExtraWastage,
+            totalWastage: (material.standardWastage || 0) + currentExtraWastage,
+            wastageReason: ''
+          };
+        }),
         remarks: ''
       });
-      
+
       setLoading(false);
     } catch (err) {
       setError('Failed to load order materials');
@@ -59,7 +66,7 @@ const AddOrderWastageModal = ({ isOpen, onClose, onSuccess, order }) => {
   const handleMaterialChange = (index, field, value) => {
     const updatedMaterials = [...formData.materialUsage];
     const material = updatedMaterials[index];
-    
+
     if (field === 'extraWastage') {
       const extraWastage = parseFloat(value) || 0;
       updatedMaterials[index] = {
@@ -73,7 +80,7 @@ const AddOrderWastageModal = ({ isOpen, onClose, onSuccess, order }) => {
         [field]: value
       };
     }
-    
+
     setFormData({ ...formData, materialUsage: updatedMaterials });
   };
 
@@ -103,17 +110,17 @@ const AddOrderWastageModal = ({ isOpen, onClose, onSuccess, order }) => {
           })),
         remarks: formData.remarks
       };
-      
+
       // Only submit if there's at least one material with wastage
       if (wastageData.materialUsage.length === 0) {
         setError('Please add wastage for at least one material');
         setIsSubmitting(false);
         return;
       }
-      
+
       // Add extra wastage
       await api.post('/production/extra-wastage', wastageData);
-      
+
       setIsSubmitting(false);
       onSuccess();
     } catch (err) {
@@ -126,7 +133,7 @@ const AddOrderWastageModal = ({ isOpen, onClose, onSuccess, order }) => {
 
   return (
     <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
           <h3 className="text-lg font-medium text-gray-900">
             Add Extra Wastage - PO# {order.poNo}
@@ -164,22 +171,17 @@ const AddOrderWastageModal = ({ isOpen, onClose, onSuccess, order }) => {
                 <p className="text-gray-500">Loading materials data...</p>
               </div>
             ) : formData.materialUsage.length > 0 ? (
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Material Extra Wastage
-                </label>
-                
-                <div className="border border-gray-200 rounded-md">
+              <div className="mb-6">
+                <h5 className="text-sm font-medium text-gray-700 mb-2">Material Wastage</h5>
+
+                <div className="border border-gray-200 rounded-md overflow-hidden">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Material</th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Item Code</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Required Qty</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Unit</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Standard Wastage</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Required Qty with Standard Wastage</th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Extra Wastage</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Total Wastage</th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Total Required</th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Reason</th>
                       </tr>
@@ -194,37 +196,30 @@ const AddOrderWastageModal = ({ isOpen, onClose, onSuccess, order }) => {
                             <div className="text-sm text-gray-500">{material.itemCode || '-'}</div>
                           </td>
                           <td className="px-3 py-2 whitespace-nowrap">
-                            <div className="text-sm text-gray-500">{material.requiredQty}</div>
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap">
-                            <div className="text-sm text-gray-500">{material.unit || '-'}</div>
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap">
-                            <div className="text-sm text-gray-500">{material.standardWastage}</div>
+                            <div className="text-sm text-gray-500">{material.requiredQty || 0} + {material.standardWastage || 0} {material.unit}</div>
                           </td>
                           <td className="px-3 py-2 whitespace-nowrap">
                             <input
                               type="number"
-                              step="0.01"
                               min="0"
+                              step="0.01"
                               value={material.extraWastage}
                               onChange={(e) => handleMaterialChange(index, 'extraWastage', e.target.value)}
-                              className="mt-0 block w-24 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-xs"
+                              className="block w-24 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                             />
                           </td>
                           <td className="px-3 py-2 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">{material.totalWastage.toFixed(2)}</div>
+                            <div className="text-sm font-medium text-gray-900">
+                              {calculateTotalMaterialRequired(material).toFixed(2)} {material.unit}
+                            </div>
                           </td>
-                          <td className="px-3 py-2 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">{calculateTotalMaterialRequired(material).toFixed(2)}</div>
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap">
+                          <td className="px-3 py-2">
                             <input
                               type="text"
-                              value={material.wastageReason || ''}
+                              value={material.wastageReason}
                               onChange={(e) => handleMaterialChange(index, 'wastageReason', e.target.value)}
-                              className="mt-0 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-xs"
-                              placeholder="Reason for extra wastage"
+                              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                              placeholder="Reason"
                             />
                           </td>
                         </tr>
@@ -234,87 +229,25 @@ const AddOrderWastageModal = ({ isOpen, onClose, onSuccess, order }) => {
                 </div>
               </div>
             ) : (
-              <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
                 <p className="text-yellow-700 text-sm">No materials found for this order.</p>
               </div>
             )}
 
-            <div className="mb-4">
-              <label htmlFor="remarks" className="block text-sm font-medium text-gray-700">
-                General Remarks
+            <div className="mt-4">
+              <label htmlFor="remarks" className="block text-sm font-medium text-gray-700 mb-1">
+                Remarks
               </label>
               <textarea
                 id="remarks"
                 name="remarks"
+                rows={2}
                 value={formData.remarks}
                 onChange={handleInputChange}
-                rows={3}
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                placeholder="Any additional notes about extra wastage"
+                className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border border-gray-300 rounded-md"
+                placeholder="Add any additional notes or comments..."
               />
             </div>
-            
-            {/* Previous Wastage History */}
-            {orderUsage && orderUsage.usage && orderUsage.usage.some(material => 
-              material.wastageHistory && material.wastageHistory.length > 0
-            ) && (
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Previously Added Extra Wastages</h4>
-                
-                <div className="space-y-4">
-                  {orderUsage.productionLogs.filter(log => log.isExtraWastageOnly).map((log, logIndex) => (
-                    <div key={logIndex} className="bg-gray-50 rounded-md p-3">
-                      <div className="flex justify-between mb-2">
-                        <span className="text-xs font-medium text-gray-600">Date: {formatDate(log.date)}</span>
-                        {log.remarks && (
-                          <span className="text-xs text-gray-600">Remarks: {log.remarks}</span>
-                        )}
-                      </div>
-                      
-                      <div className="border border-gray-200 rounded-md bg-white">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-2 py-1 text-left text-xs font-medium text-gray-500">Material</th>
-                              <th className="px-2 py-1 text-left text-xs font-medium text-gray-500">Extra Wastage</th>
-                              <th className="px-2 py-1 text-left text-xs font-medium text-gray-500">Reason</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-200">
-                            {orderUsage.usage.map((material, materialIndex) => {
-                              // Find the matching wastage history entry for this log date
-                              const historyEntry = material.wastageHistory?.find(
-                                h => new Date(h.date).getTime() === new Date(log.date).getTime() && h.isExtraWastageOnly
-                              );
-                              
-                              if (!historyEntry || historyEntry.extraWastage <= 0) return null;
-                              
-                              return (
-                                <tr key={materialIndex}>
-                                  <td className="px-2 py-1 whitespace-nowrap">
-                                    <div className="text-xs text-gray-900">{material.materialName}</div>
-                                  </td>
-                                  <td className="px-2 py-1 whitespace-nowrap">
-                                    <div className="text-xs font-medium text-gray-900">
-                                      {historyEntry.extraWastage} {material.unit}
-                                    </div>
-                                  </td>
-                                  <td className="px-2 py-1 whitespace-nowrap">
-                                    <div className="text-xs text-gray-500">
-                                      {historyEntry.wastageReason || '-'}
-                                    </div>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
           <div className="px-6 py-3 bg-gray-50 flex justify-end space-x-3">
@@ -327,7 +260,7 @@ const AddOrderWastageModal = ({ isOpen, onClose, onSuccess, order }) => {
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || formData.materialUsage.length === 0}
+              disabled={isSubmitting}
               className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
             >
               {isSubmitting ? 'Saving...' : 'Save Extra Wastage'}
