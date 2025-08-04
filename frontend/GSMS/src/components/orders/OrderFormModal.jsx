@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import api from '../../services/api';
 import { Combobox } from '@headlessui/react';
-import { CheckIcon, ChevronUpDownIcon } from '@heroicons/react/20/solid';
+import { CheckIcon, ChevronUpDownIcon, XMarkIcon } from '@heroicons/react/20/solid';
 
-const OrderFormModal = ({ isOpen, onClose, onSuccess }) => {
+const OrderFormModal = ({ isOpen, onClose, onSuccess, order }) => {
   const [formData, setFormData] = useState({
     productId: '',
     quantity: '',
@@ -20,6 +20,22 @@ const OrderFormModal = ({ isOpen, onClose, onSuccess }) => {
       try {
         const response = await api.get('/products');
         setProducts(response.data);
+        
+        // If editing an existing order, set the form data
+        if (order && order._id) {
+          setFormData({
+            productId: order.productId?._id || order.productId || '',
+            quantity: order.quantity || '',
+            description: order.description || '',
+            orderDate: order.orderDate ? new Date(order.orderDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+          });
+          
+          // Set the search query to the product name for display
+          const product = response.data.find(p => p._id === (order.productId?._id || order.productId));
+          if (product) {
+            setSearchQuery(`${product.itemName} (${product.styleNo})`);
+          }
+        }
       } catch (err) {
         setError('Failed to fetch products');
       }
@@ -28,7 +44,19 @@ const OrderFormModal = ({ isOpen, onClose, onSuccess }) => {
     if (isOpen) {
       fetchProducts();
     }
-  }, [isOpen]);
+    
+    // Reset form when modal is closed
+    return () => {
+      setFormData({ 
+        productId: '', 
+        quantity: '',
+        description: '',
+        orderDate: new Date().toISOString().split('T')[0]
+      });
+      setSearchQuery('');
+      setError(null);
+    };
+  }, [isOpen, order]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -43,6 +71,11 @@ const OrderFormModal = ({ isOpen, onClose, onSuccess }) => {
       ...prev,
       productId: product?._id || ''
     }));
+    
+    // Update search query to show the selected product
+    if (product) {
+      setSearchQuery(`${product.itemName} (${product.styleNo})`);
+    }
   };
 
   // Filter products based on search query
@@ -68,17 +101,18 @@ const OrderFormModal = ({ isOpen, onClose, onSuccess }) => {
     setError(null);
 
     try {
-      await api.post('/orders', formData);
+      if (order && order._id) {
+        // Update existing order
+        await api.patch(`/orders/${order._id}`, formData);
+      } else {
+        // Create new order
+        await api.post('/orders', formData);
+      }
+      
       onSuccess();
       onClose();
-      setFormData({ 
-        productId: '', 
-        quantity: '',
-        description: '',
-        orderDate: new Date().toISOString().split('T')[0]
-      });
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to create order');
+      setError(err.response?.data?.message || `Failed to ${order?._id ? 'update' : 'create'} order`);
     } finally {
       setLoading(false);
     }
@@ -99,17 +133,16 @@ const OrderFormModal = ({ isOpen, onClose, onSuccess }) => {
               <div className="mt-3 text-center sm:mt-0 sm:text-left w-full">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                    Place New Order
+                    {order?._id ? 'Edit Order' : 'New Order'}
                   </h3>
                   <button
                     type="button"
                     onClick={onClose}
-                    className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    disabled={loading}
+                    className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none"
                   >
                     <span className="sr-only">Close</span>
-                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <XMarkIcon className="h-6 w-6" aria-hidden="true" />
                   </button>
                 </div>
 

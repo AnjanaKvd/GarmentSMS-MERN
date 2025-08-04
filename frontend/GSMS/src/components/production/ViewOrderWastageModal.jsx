@@ -90,14 +90,9 @@ const ViewOrderWastageModal = ({ isOpen, onClose, order }) => {
                       <tr>
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Material</th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Item Code</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Required Qty</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Unit</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Used Qty</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Standard Wastage</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Required Qty with Standard Wastage</th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Extra Wastage</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Total Wastage</th>
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Total Required</th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Waste %</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
@@ -110,31 +105,14 @@ const ViewOrderWastageModal = ({ isOpen, onClose, order }) => {
                             <div className="text-sm text-gray-500">{material.itemCode || '-'}</div>
                           </td>
                           <td className="px-3 py-2 whitespace-nowrap">
-                            <div className="text-sm text-gray-500">{material.requiredQty || 0}</div>
+                            <div className="text-sm text-gray-500">{material.requiredQty || 0} + {material.standardWastage || 0} {material.unit}</div>
                           </td>
                           <td className="px-3 py-2 whitespace-nowrap">
-                            <div className="text-sm text-gray-500">{material.unit || '-'}</div>
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap">
-                            <div className="text-sm text-gray-500">{material.actualUsedQty || 0}</div>
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap">
-                            <div className="text-sm text-gray-500">{material.standardWastage || 0}</div>
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap">
-                            <div className="text-sm text-gray-500">{material.extraWastage || 0}</div>
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">{material.wastage || 0}</div>
+                            <div className="text-sm text-gray-500">{material.extraWastage || 0} {material.unit}</div>
                           </td>
                           <td className="px-3 py-2 whitespace-nowrap">
                             <div className="text-sm font-medium text-gray-900">
-                              {calculateTotalMaterialRequired(material).toFixed(2)}
-                            </div>
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {material.wastePercentage || '0'}%
+                              {calculateTotalMaterialRequired(material).toFixed(2)} {material.unit}
                             </div>
                           </td>
                         </tr>
@@ -144,74 +122,9 @@ const ViewOrderWastageModal = ({ isOpen, onClose, order }) => {
                 </div>
               </div>
               
-              {/* Wastage History Details */}
-              <div className="mb-6">
-                <h5 className="text-sm font-medium text-gray-700 mb-2">Wastage History</h5>
-                
-                {orderUsage.usage.some(material => material.wastageHistory && material.wastageHistory.length > 0) ? (
-                  <div className="space-y-4">
-                    {orderUsage.usage.map((material, mIndex) => (
-                      material.wastageHistory && material.wastageHistory.length > 0 && (
-                        <div key={mIndex} className="border border-gray-200 rounded-md overflow-hidden">
-                          <div className="bg-gray-50 px-3 py-2">
-                            <h6 className="text-xs font-medium text-gray-700">{material.materialName} ({material.itemCode})</h6>
-                          </div>
-                          
-                          <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                              <tr>
-                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Date</th>
-                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Standard Wastage</th>
-                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Extra Wastage</th>
-                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Total</th>
-                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Type</th>
-                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Reason</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200">
-                              {material.wastageHistory.map((history, hIndex) => (
-                                <tr key={hIndex} className={hIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                                  <td className="px-3 py-2 whitespace-nowrap">
-                                    <div className="text-sm text-gray-500">{formatDate(history.date)}</div>
-                                  </td>
-                                  <td className="px-3 py-2 whitespace-nowrap">
-                                    <div className="text-sm text-gray-500">{history.standardWastage || 0}</div>
-                                  </td>
-                                  <td className="px-3 py-2 whitespace-nowrap">
-                                    <div className="text-sm text-gray-500">{history.extraWastage || 0}</div>
-                                  </td>
-                                  <td className="px-3 py-2 whitespace-nowrap">
-                                    <div className="text-sm font-medium text-gray-900">{history.totalWastage || 0}</div>
-                                  </td>
-                                  <td className="px-3 py-2 whitespace-nowrap">
-                                    <div className="text-sm text-gray-500">
-                                      {history.isExtraWastageOnly ? 
-                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">Extra Only</span> : 
-                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">Production</span>
-                                      }
-                                    </div>
-                                  </td>
-                                  <td className="px-3 py-2">
-                                    <div className="text-sm text-gray-500">{history.wastageReason || '-'}</div>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
-                    <p className="text-yellow-700 text-sm">No wastage history found for this order.</p>
-                  </div>
-                )}
-              </div>
-              
               {/* Production Logs */}
               <div className="mb-4">
-                <h5 className="text-sm font-medium text-gray-700 mb-2">Production Records</h5>
+                <h5 className="text-sm font-medium text-gray-700 mb-2">Cutting Records</h5>
                 
                 {orderUsage.productionLogs && orderUsage.productionLogs.length > 0 ? (
                   <div className="border border-gray-200 rounded-md">
@@ -231,7 +144,7 @@ const ViewOrderWastageModal = ({ isOpen, onClose, order }) => {
                               <div className="text-sm text-gray-500">{formatDate(log.date)}</div>
                             </td>
                             <td className="px-3 py-2 whitespace-nowrap">
-                              <div className="text-sm text-gray-900">{log.cutQty}</div>
+                              <div className="text-sm text-gray-900">{log.cutQty} {log.unit}</div>
                             </td>
                             <td className="px-3 py-2 whitespace-nowrap">
                               <div className="text-sm text-gray-500">

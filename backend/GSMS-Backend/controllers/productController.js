@@ -127,11 +127,22 @@ exports.getProductBOM = async (req, res) => {
 // Update product
 exports.updateProduct = async (req, res) => {
   try {
-    const { itemName, description, materialsRequired, customer } = req.body;
+    const { styleNo, itemName, description, materialsRequired, customer } = req.body;
     
     const product = await Product.findById(req.params.id);
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
+    }
+    
+    // Check if styleNo is being updated and if it already exists
+    if (styleNo && styleNo !== product.styleNo) {
+      const existingProduct = await Product.findOne({ styleNo });
+      if (existingProduct) {
+        return res.status(400).json({ 
+          message: 'A product with this style number already exists' 
+        });
+      }
+      product.styleNo = styleNo;
     }
     
     // Validate materials if provided
