@@ -1,14 +1,17 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchProductById, fetchProductBOM, clearCurrentProduct } from '../../redux/slices/productsSlice';
 import { fetchCustomers } from '../../redux/slices/customersSlice';
+import api from '../../services/api';
 
 const ProductBOMPage = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
   const { currentProduct, currentBOM, isLoading, error } = useSelector((state) => state.products);
   const { customers } = useSelector((state) => state.customers);
+  const [wastageData, setWastageData] = useState({ materialsWastage: [] });
+  const [isWastageLoading, setIsWastageLoading] = useState(false);
 
   // Create a map of customer IDs to customer objects for quick lookup
   const customerMap = useMemo(() => {
@@ -27,6 +30,7 @@ const ProductBOMPage = () => {
       : currentProduct.customer;
   }, [currentProduct, customerMap]);
 
+  // Fetch product and BOM data
   useEffect(() => {
     if (id) {
       dispatch(fetchProductById(id));
@@ -39,6 +43,58 @@ const ProductBOMPage = () => {
       dispatch(clearCurrentProduct());
     };
   }, [dispatch, id]);
+
+  // Fetch wastage data
+  useEffect(() => {
+    const fetchWastageData = async () => {
+      if (!id) return;
+      
+      try {
+        setIsWastageLoading(true);
+        const response = await api.get(`/products/${id}/wastage`);
+        setWastageData({
+          materialsWastage: response.data.materialsWastage || []
+        });
+      } catch (error) {
+        console.error('Error fetching wastage data:', error);
+      } finally {
+        setIsWastageLoading(false);
+      }
+    };
+
+    if (id) {
+      fetchWastageData();
+    }
+  }, [id]);
+
+  // Merge BOM data with wastage data
+  const enhancedBOM = useMemo(() => {
+    if (!currentBOM?.bom) return [];
+    
+    return currentBOM.bom.map(bomItem => {
+      // Handle both string materialId and nested materialId._id
+      const materialId = typeof bomItem.materialId === 'string' 
+        ? bomItem.materialId 
+        : bomItem.materialId?._id;
+      
+      const wastageItem = wastageData.materialsWastage?.find(
+        item => item.materialId === materialId
+      );
+      
+      // Calculate wastage quantity
+      const wastagePercentage = wastageItem?.expectedWastagePercentage || 0;
+      const quantityPerPiece = bomItem.quantityPerPiece || 0;
+      const wastageQuantity = (quantityPerPiece * wastagePercentage / 100).toFixed(4);
+      
+      return {
+        ...bomItem,
+        materialId: materialId, // Ensure materialId is always a string
+        expectedWastagePercentage: wastagePercentage,
+        wastageQuantity: wastageQuantity,
+        wastageRemarks: wastageItem?.remarks || ''
+      };
+    });
+  }, [currentBOM, wastageData]);
 
   if (isLoading) {
     return (
@@ -137,7 +193,11 @@ const ProductBOMPage = () => {
           </h3>
         </div>
         <div className="border-t border-gray-200">
-          {currentBOM.bom && currentBOM.bom.length > 0 ? (
+          {isWastageLoading ? (
+            <div className="flex justify-center items-center p-8">
+              <p className="text-gray-500">Loading wastage data...</p>
+            </div>
+          ) : enhancedBOM && enhancedBOM.length > 0 ? (
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -150,10 +210,16 @@ const ProductBOMPage = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Quantity Per Piece
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Expected Wastage Qty
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Total Qty
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {currentBOM.bom.map((item, index) => (
+                {enhancedBOM.map((item, index) => (
                   <tr key={index}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {item.materialName || "Unknown"}
@@ -163,6 +229,12 @@ const ProductBOMPage = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {item.quantityPerPiece} {item.unit || ""}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {item.wastageQuantity} {item.unit || ''}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {item.quantityPerPiece + item.wastageQuantity} {item.unit || ''}
                     </td>
                   </tr>
                 ))}

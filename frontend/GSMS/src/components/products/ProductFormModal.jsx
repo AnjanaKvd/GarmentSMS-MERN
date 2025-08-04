@@ -561,11 +561,7 @@ const ProductFormModal = ({ isOpen, onClose, product = null }) => {
                   </div>
                   
                   <div className="mt-4 text-sm text-gray-600 italic">
-                    Note: Add without wastage. Wastages can be added from the{' '}
-                    <Link to="/production" className="text-indigo-600 hover:text-indigo-800">
-                      production
-                    </Link>{' '}
-                    page.
+                    Note: Add without wastage. Wastages can be added later.
                   </div>
                   
                   <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">

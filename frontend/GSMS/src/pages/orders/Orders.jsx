@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import api from '../../services/api';
-import { MagnifyingGlassIcon, ChevronDownIcon, ChevronRightIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { MagnifyingGlassIcon, ChevronDownIcon, ChevronRightIcon, PlusIcon, TrashIcon, EyeIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 import OrderFormModal from '../../components/orders/OrderFormModal';
 import DeleteOrderModal from '../../components/orders/DeleteOrderModal';
 import OrderDetailsModal from '../../components/orders/OrderDetailsModal';
+import AddOrderWastageModal from '../../components/production/AddOrderWastageModal';
+import ViewOrderWastageModal from '../../components/production/ViewOrderWastageModal';
 import { getUserFromToken } from '../../redux/slices/authSlice';
 
 const Orders = () => {
@@ -30,6 +32,8 @@ const Orders = () => {
   const [deleteSuccessMessage, setDeleteSuccessMessage] = useState(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [updateSuccessMessage, setUpdateSuccessMessage] = useState(null);
+  const [showAddWastageModal, setShowAddWastageModal] = useState(false);
+  const [showViewWastageModal, setShowViewWastageModal] = useState(false);
 
   const fetchOrders = async () => {
     try {
@@ -156,6 +160,24 @@ const Orders = () => {
     setSelectedOrder(null);
   };
 
+  const handleAddWastageClick = (order, e) => {
+    e.stopPropagation(); // Prevent row click event
+    setSelectedOrder(order);
+    setShowAddWastageModal(true);
+  };
+
+  const handleViewWastageClick = (order, e) => {
+    e.stopPropagation(); // Prevent row click event
+    setSelectedOrder(order);
+    setShowViewWastageModal(true);
+  };
+
+  const handleWastageSuccess = () => {
+    setShowAddWastageModal(false);
+    setShowViewWastageModal(false);
+    fetchOrders(); // Refresh orders to show updated wastage data
+  };
+
   const filteredOrders = orders.filter(order => 
     order.poNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
     order.productId.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -249,13 +271,14 @@ const Orders = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order Date</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Wastage</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
+                  <td colSpan={8} className="px-6 py-4 text-center text-sm text-gray-500">
                     No orders found
                   </td>
                 </tr>
@@ -305,6 +328,26 @@ const Orders = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {new Date(order.orderDate).toLocaleDateString()}
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <div className="flex justify-center space-x-2">
+                          <button
+                            onClick={(e) => handleViewWastageClick(order, e)}
+                            className="text-green-600 hover:text-green-900"
+                            title="View Wastage"
+                          >
+                            <EyeIcon className="h-5 w-5" />
+                          </button>
+                          {canUpdateStatus && (
+                            <button
+                              onClick={(e) => handleAddWastageClick(order, e)}
+                              className="text-blue-600 hover:text-blue-900"
+                              title="Add/Edit Wastage"
+                            >
+                              <PencilSquareIcon className="h-5 w-5" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         <div className="flex space-x-3">
                           <button
@@ -321,35 +364,12 @@ const Orders = () => {
                               <ChevronRightIcon className="h-5 w-5" />
                             )}
                           </button>
-                          {canEditOrders && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation(); // Prevent row click event
-                                handleViewOrderDetails(order);
-                              }}
-                              className="text-blue-600 hover:text-blue-900"
-                              title="Edit Order"
-                            >
-                            </button>
-                          )}
-                          {canDeleteOrders && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation(); // Prevent row click event
-                                handleDeleteOrder(order);
-                              }}
-                              className="text-red-600 hover:text-red-900"
-                              title="Delete Order"
-                            >
-                              <TrashIcon className="h-5 w-5" />
-                            </button>
-                          )}
                         </div>
                       </td>
                     </tr>
                     {expandedOrderId === order._id && (
                       <tr onClick={(e) => e.stopPropagation()}>
-                        <td colSpan={7} className="px-8 pb-6 pt-0">
+                        <td colSpan={8} className="px-8 pb-6 pt-0">
                           <div className="bg-gray-50 rounded-lg p-6 mt-2 mb-2 shadow-inner">
                             <h3 className="text-md font-semibold text-gray-800 mb-4">Material Usage Details</h3>
                             {(!order.usage || order.usage.length === 0) ? (
@@ -437,9 +457,27 @@ const Orders = () => {
       <OrderDetailsModal
         isOpen={isDetailsModalOpen}
         onClose={handleCloseDetailsModal}
-        onSuccess={handleOrderUpdateSuccess}
         order={selectedOrder}
+        onSuccess={handleOrderUpdateSuccess}
       />
+
+      {/* Add/Edit Order Wastage Modal */}
+      {selectedOrder && (
+        <>
+          <AddOrderWastageModal
+            isOpen={showAddWastageModal}
+            onClose={() => setShowAddWastageModal(false)}
+            onSuccess={handleWastageSuccess}
+            order={selectedOrder}
+          />
+          
+          <ViewOrderWastageModal
+            isOpen={showViewWastageModal}
+            onClose={() => setShowViewWastageModal(false)}
+            order={selectedOrder}
+          />
+        </>
+      )}
     </div>
   );
 };
