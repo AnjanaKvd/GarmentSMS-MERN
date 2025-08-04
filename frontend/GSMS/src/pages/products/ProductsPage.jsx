@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchProducts } from '../../redux/slices/productsSlice';
+import { fetchCustomers } from '../../redux/slices/customersSlice';
 import ProductFormModal from '../../components/products/ProductFormModal';
 import DeleteProductModal from '../../components/products/DeleteProductModal';
 import { Link } from 'react-router-dom';
@@ -9,22 +10,45 @@ import { getUserFromToken } from '../../redux/slices/authSlice';
 const ProductsPage = () => {
   const dispatch = useDispatch();
   const { products, isLoading, error } = useSelector((state) => state.products);
+  const { customers } = useSelector((state) => state.customers);
   const { token } = useSelector((state) => state.auth);
-const user = getUserFromToken(token);;
-  
+  const user = getUserFromToken(token);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  
+
   // Define role-based permissions
   const canAddEditProducts = ['ADMIN', 'MANAGER'].includes(user?.role);
   const canDeleteProducts = ['ADMIN'].includes(user?.role);
   const canViewProducts = ['ADMIN', 'MANAGER', 'PRODUCTION', 'VIEWER'].includes(user?.role);
 
+  // Create a map of customer IDs to customer objects for quick lookup
+  const customerMap = useMemo(() => {
+    const map = {};
+    customers.forEach(customer => {
+      map[customer._id] = customer;
+    });
+    return map;
+  }, [customers]);
+
+  // Enhance products with customer details
+  const enhancedProducts = useMemo(() => {
+    return products.map(product => ({
+      ...product,
+      // If customer is just an ID, look up the full customer object
+      // Otherwise, use the customer object as is
+      customer: typeof product.customer === 'string'
+        ? customerMap[product.customer]
+        : product.customer
+    }));
+  }, [products, customerMap]);
+
   useEffect(() => {
     dispatch(fetchProducts());
+    dispatch(fetchCustomers({ page: 1, limit: 1000 })); // Fetch all customers
   }, [dispatch]);
 
   const handleAddClick = () => {
@@ -42,9 +66,10 @@ const user = getUserFromToken(token);;
     setShowDeleteModal(true);
   };
 
-  const filteredProducts = products.filter(product => 
-    product.styleNo?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    product.itemName?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredProducts = enhancedProducts.filter(product =>
+    product.styleNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    product.itemName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (product.customer?.name && product.customer.name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -87,20 +112,23 @@ const user = getUserFromToken(token);;
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Style No
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Item Name
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Customer
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Description
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   BOM
                 </th>
                 {(canAddEditProducts || canDeleteProducts) && (
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
                 )}
@@ -109,36 +137,42 @@ const user = getUserFromToken(token);;
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={(canAddEditProducts || canDeleteProducts) ? 5 : 4} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                  <td colSpan={(canAddEditProducts || canDeleteProducts) ? 6 : 5} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
                     No products found
                   </td>
                 </tr>
               ) : (
                 filteredProducts.map((product) => (
-                  <tr key={product.id || product._id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <tr key={product.id || product._id} className="hover:bg-gray-50">
+                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {product.styleNo}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
                       {product.itemName}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                      {product.description}
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {product.customer?.name || '—'}
+                      {product.customer?.country && (
+                        <span className="text-xs text-gray-400 ml-1">({product.customer.country})</span>
+                      )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-4 py-4 text-sm text-gray-500 max-w-xs truncate">
+                      {product.description || '—'}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-center">
                       <Link
                         to={`/products/${product.id || product._id}/bom`}
-                        className="text-indigo-600 hover:text-indigo-900"
+                        className="inline-block px-3 py-1 text-sm font-medium text-indigo-600 border border-indigo-600 rounded hover:bg-indigo-50 transition"
                       >
                         View BOM
                       </Link>
                     </td>
                     {(canAddEditProducts || canDeleteProducts) && (
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                         {canAddEditProducts && (
                           <button
                             onClick={() => handleEditClick(product)}
-                            className="text-indigo-600 hover:text-indigo-900 mr-4"
+                            className="inline-block px-3 py-1 text-sm font-medium text-blue-600 border border-blue-600 rounded hover:bg-blue-50 transition"
                             title="Edit product"
                           >
                             Edit
@@ -147,7 +181,7 @@ const user = getUserFromToken(token);;
                         {canDeleteProducts && (
                           <button
                             onClick={() => handleDeleteClick(product)}
-                            className="text-red-600 hover:text-red-900"
+                            className="inline-block px-3 py-1 text-sm font-medium text-red-600 border border-red-600 rounded hover:bg-red-50 transition"
                             title="Delete product"
                           >
                             Delete
@@ -156,6 +190,7 @@ const user = getUserFromToken(token);;
                       </td>
                     )}
                   </tr>
+
                 ))
               )}
             </tbody>

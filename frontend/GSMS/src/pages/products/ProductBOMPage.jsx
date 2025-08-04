@@ -1,17 +1,38 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchProductById, fetchProductBOM, clearCurrentProduct } from '../../redux/slices/productsSlice';
+import { fetchCustomers } from '../../redux/slices/customersSlice';
 
 const ProductBOMPage = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
   const { currentProduct, currentBOM, isLoading, error } = useSelector((state) => state.products);
+  const { customers } = useSelector((state) => state.customers);
+
+  // Create a map of customer IDs to customer objects for quick lookup
+  const customerMap = useMemo(() => {
+    const map = {};
+    customers.forEach(customer => {
+      map[customer._id] = customer;
+    });
+    return map;
+  }, [customers]);
+
+  // Get the customer for the current product
+  const productCustomer = useMemo(() => {
+    if (!currentProduct?.customer) return null;
+    return typeof currentProduct.customer === 'string' 
+      ? customerMap[currentProduct.customer] 
+      : currentProduct.customer;
+  }, [currentProduct, customerMap]);
 
   useEffect(() => {
     if (id) {
       dispatch(fetchProductById(id));
       dispatch(fetchProductBOM(id));
+      // Fetch all customers to map customer IDs to names
+      dispatch(fetchCustomers({ page: 1, limit: 1000 }));
     }
 
     return () => {
@@ -82,6 +103,27 @@ const ProductBOMPage = () => {
               <dt className="text-sm font-medium text-gray-500">Description</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
                 {currentProduct.description}
+              </dd>
+            </div>
+            <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <dt className="text-sm font-medium text-gray-500">Customer</dt>
+              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                {productCustomer ? (
+                  <div>
+                    <div className="font-medium">{productCustomer.name}</div>
+                    {productCustomer.country && (
+                      <div className="text-gray-500">{productCustomer.country}</div>
+                    )}
+                    {productCustomer.email && (
+                      <div className="text-gray-500 text-sm">{productCustomer.email}</div>
+                    )}
+                    {productCustomer.phone && (
+                      <div className="text-gray-500 text-sm">{productCustomer.phone}</div>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-gray-400">No customer assigned</span>
+                )}
               </dd>
             </div>
           </dl>

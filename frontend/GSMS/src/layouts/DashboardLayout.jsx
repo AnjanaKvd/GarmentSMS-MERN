@@ -12,6 +12,7 @@ import {
   ChartBarIcon,
   BellIcon,
   UserIcon,
+  UserGroupIcon,
   ArrowRightOnRectangleIcon,
   ShieldCheckIcon
 } from '@heroicons/react/24/outline';
@@ -45,6 +46,7 @@ const DashboardLayout = () => {
     { name: 'Products & BOM', href: '/products', icon: ShoppingBagIcon, allowed: true },
     { name: 'Orders', href: '/orders', icon: ClipboardDocumentListIcon, allowed: isManagerOrAdmin || isProductionOrHigher },
     { name: 'Production', href: '/production', icon: DocumentTextIcon, allowed: isProductionOrHigher },
+    { name: 'Customers', href: '/customers', icon: UserGroupIcon, allowed: isManagerOrAdmin },
     { name: 'Reports', href: '/reports', icon: ChartBarIcon, allowed: isManagerOrAdmin || isProductionOrHigher || isViewer},
     { name: 'Users', href: '/users', icon: UserIcon, allowed: isAdmin },
   ];

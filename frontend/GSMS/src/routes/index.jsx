@@ -17,6 +17,11 @@ import Orders from '../pages/orders/Orders';
 import Production from '../pages/production/Production';
 import ReportsPage from '../pages/reports/ReportsPage';
 
+// Customer Management Pages
+import CustomersPage from '../pages/customers/CustomersPage';
+import CustomerDetail from '../pages/customers/CustomerDetail';
+import CustomerForm from '../pages/customers/CustomerForm';
+
 // Protected route
 import ProtectedRoute from './ProtectedRoute';
 
@@ -93,6 +98,30 @@ const Routes = () => {
             {
               path: ':id/ledger',
               element: <MaterialLedgerPage />,
+            },
+          ],
+        },
+        
+        // Customer Management Routes
+        {
+          path: '/customers',
+          element: <DashboardLayout />,
+          children: [
+            {
+              index: true,
+              element: <CustomersPage />,
+            },
+            {
+              path: 'new',
+              element: <CustomerForm />,
+            },
+            {
+              path: ':id',
+              element: <CustomerDetail />,
+            },
+            {
+              path: 'edit/:id',
+              element: <CustomerForm />,
             },
           ],
         },

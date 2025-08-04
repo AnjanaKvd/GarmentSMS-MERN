@@ -29,7 +29,7 @@ exports.getProductById = async (req, res) => {
 // Create new product
 exports.createProduct = async (req, res) => {
   try {
-    const { styleNo, itemName, description, materialsRequired } = req.body;
+    const { styleNo, itemName, description, materialsRequired, customer } = req.body;
     
     // Validate styleNo is provided
     if (!styleNo) {
@@ -64,10 +64,21 @@ exports.createProduct = async (req, res) => {
       }
     }
     
+    // Validate customer exists if provided
+    if (customer) {
+      const customerExists = await mongoose.model('Customer').findById(customer);
+      if (!customerExists) {
+        return res.status(400).json({ 
+          message: 'Customer not found' 
+        });
+      }
+    }
+
     const newProduct = new Product({
       styleNo,
       itemName,
       description: description || '',
+      customer: customer || null,
       materialsRequired: materialsRequired || []
     });
     
@@ -116,7 +127,7 @@ exports.getProductBOM = async (req, res) => {
 // Update product
 exports.updateProduct = async (req, res) => {
   try {
-    const { itemName, description, materialsRequired } = req.body;
+    const { itemName, description, materialsRequired, customer } = req.body;
     
     const product = await Product.findById(req.params.id);
     if (!product) {
@@ -143,6 +154,21 @@ exports.updateProduct = async (req, res) => {
       product.materialsRequired = materialsRequired;
     }
     
+    // Update customer if provided
+    if (customer !== undefined) {
+      if (customer) {
+        const customerExists = await mongoose.model('Customer').findById(customer);
+        if (!customerExists) {
+          return res.status(400).json({ 
+            message: 'Customer not found' 
+          });
+        }
+        product.customer = customer;
+      } else {
+        product.customer = null;
+      }
+    }
+
     if (itemName) product.itemName = itemName;
     if (description !== undefined) product.description = description;
     
