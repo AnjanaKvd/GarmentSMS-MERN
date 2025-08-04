@@ -226,17 +226,25 @@ const RawMaterialsPage = () => {
                         className="hover:bg-gray-50 cursor-pointer"
                         onClick={() => navigate(`/raw-materials/${material.id || material._id}/ledger`)}
                       >
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {material.name}
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-500 truncate max-w-[200px]" title={material.name}>
+                            {material.name}
+                          </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {material.itemCode}
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-500 truncate max-w-[150px]" title={material.itemCode}>
+                            {material.itemCode}
+                          </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {material.currentStock} {material.unit}
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-500">
+                            {material.currentStock} {material.unit}
+                          </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(material.updatedDate).toLocaleString()}
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-500" title={new Date(material.updatedDate).toLocaleString()}>
+                            {new Date(material.updatedDate).toLocaleDateString()}
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
   <div className="flex justify-end space-x-2" onClick={(e) => e.stopPropagation()}>

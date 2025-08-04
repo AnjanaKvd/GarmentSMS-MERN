@@ -154,15 +154,29 @@ const ProductsPage = () => {
     ) : (
       filteredProducts.map((product) => (
         <tr key={product.id || product._id} className="hover:bg-gray-50 transition">
-          <td className="px-4 py-4 text-sm font-medium text-gray-800">{product.styleNo}</td>
-          <td className="px-4 py-4 text-sm font-medium text-gray-800">{product.itemName}</td>
-          <td className="px-4 py-4 text-sm text-gray-500">
-            {product.customer?.name || '—'}
-            {product.customer?.country && (
-              <span className="text-xs text-gray-400 ml-1">({product.customer.country})</span>
-            )}
+          <td className="px-4 py-4">
+            <div className="text-sm font-medium text-gray-800 truncate max-w-[120px]" title={product.styleNo}>
+              {product.styleNo}
+            </div>
           </td>
-          <td className="px-4 py-4 text-sm text-gray-500 truncate max-w-xs">{product.description || '—'}</td>
+          <td className="px-4 py-4">
+            <div className="text-sm font-medium text-gray-800 truncate max-w-[200px]" title={product.itemName}>
+              {product.itemName}
+            </div>
+          </td>
+          <td className="px-4 py-4">
+            <div className="text-sm text-gray-500 truncate max-w-[150px]" title={`${product.customer?.name || ''}${product.customer?.country ? ` (${product.customer.country})` : ''}`}>
+              {product.customer?.name || '—'}
+              {product.customer?.country && (
+                <span className="text-xs text-gray-400 ml-1">({product.customer.country})</span>
+              )}
+            </div>
+          </td>
+          <td className="px-4 py-4">
+            <div className="text-sm text-gray-500 truncate max-w-[200px]" title={product.description}>
+              {product.description || '—'}
+            </div>
+          </td>
 
           {/* View BOM Button */}
           <td className="px-4 py-4 text-center">

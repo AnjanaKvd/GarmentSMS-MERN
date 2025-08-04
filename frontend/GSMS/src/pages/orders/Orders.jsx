@@ -313,14 +313,20 @@ const Orders = () => {
                         }
                       }}
                     >
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="font-semibold text-gray-900">{order.poNo}</span>
+                      <td className="px-6 py-4">
+                        <div className="max-w-[120px] truncate group relative" title={order.poNo}>
+                          <span className="font-semibold text-gray-900">{order.poNo}</span>
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="font-medium text-gray-900">{order.productId.itemName}</div>
-                        <div className="text-sm text-gray-500">{order.productId.styleNo}</div>
+                      <td className="px-6 py-4">
+                        <div className="max-w-[200px] truncate group relative" title={order.productId.itemName}>
+                          <div className="font-medium text-gray-900">{order.productId.itemName}</div>
+                        </div>
+                        <div className="max-w-[200px] truncate group relative" title={order.productId.styleNo}>
+                          <div className="text-sm text-gray-500">{order.productId.styleNo}</div>
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{order.quantity}</td>
+                      <td className="px-6 py-4 text-sm text-gray-900">{order.quantity}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {canUpdateStatus ? (
                           <select
@@ -353,7 +359,7 @@ const Orders = () => {
                           </span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 text-sm text-gray-900">
                         {new Date(order.orderDate).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">

@@ -29,7 +29,12 @@ const getCustomers = asyncHandler(async (req, res) => {
   let query = {};
   
   if (search) {
-    query.$text = { $search: search };
+    const searchRegex = new RegExp(search, 'i');
+    query.$or = [
+      { name: searchRegex },
+      { description: searchRegex },
+      { country: searchRegex }
+    ];
   }
 
   const customers = await Customer.find(query)
