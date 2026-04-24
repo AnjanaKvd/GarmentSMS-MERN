@@ -19,4 +19,11 @@ app.use('/api/customers', require('./routes/customerRoutes'));
 // Swagger (optional)
 app.use('/api-docs', require('./utils/swagger'));
 
+// Serve React static build if API route not matched
+const path = require('path');
+app.use(express.static(path.join(__dirname, '../../frontend-dist')));
+app.get(/.*/, (req, res) => {
+    res.sendFile(path.join(__dirname, '../../frontend-dist', 'index.html'));
+});
+
 module.exports = app;
