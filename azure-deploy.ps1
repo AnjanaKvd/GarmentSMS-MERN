@@ -8,7 +8,7 @@ $ErrorActionPreference = "Stop"
 # ═══════════════════════════════════════════════════════════════
 
 # ── Configuration ────────────────────────────────────────────
-$RG       = "PROJ"
+$RG       = "PROJETS"
 $LOCATION = "eastus"
 $RAND     = -join ((1..6) | ForEach-Object { '{0:x}' -f (Get-Random -Max 16) })
 $ACR_NAME = "projacr$RAND"
